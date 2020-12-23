@@ -60,3 +60,4 @@ driver-add-the-support-max6620.patch
 0057-watchdog-mlx-wdt-support-new-watchdog-type-with-long.patch
 0058-mlxsw-core-thermal-Enable-thermal-zones-by-default.patch
 0059-platform-x86-mlx-platform-Remove-PSU-EEPROM-configur.patch
+drivers-i2c-muxes-pca954x-deselect-on-exit.patch

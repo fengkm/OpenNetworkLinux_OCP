@@ -1,0 +1,1 @@
+obj-m += x86-64-ufispace-s9501-28smt-lpc.o
