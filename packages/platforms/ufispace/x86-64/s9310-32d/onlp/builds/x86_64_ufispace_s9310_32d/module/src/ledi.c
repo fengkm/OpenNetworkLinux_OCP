@@ -63,9 +63,6 @@ static onlp_led_info_t led_info[] =
     },
 };
 
-
-extern int sys_fan_info_get(onlp_fan_info_t* info, int id);
-
 /*
  * This function will be called prior to any other onlp_ledi_* functions.
  */

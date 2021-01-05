@@ -57,7 +57,7 @@ class OnlPlatform_x86_64_ufispace_s9501_18smt_r0(OnlPlatformUfiSpace):
     MODEL="S9501-18SMT"
     SYS_OBJECT_ID=".9501.18"
     PORT_COUNT=18
-    PORT_CONFIG="4x1 + 8x2.5 + 6x10"
+    PORT_CONFIG="12x1 + 6x10"
 
     def check_bmc_enable(self):
         return 1
@@ -114,6 +114,9 @@ class OnlPlatform_x86_64_ufispace_s9501_18smt_r0(OnlPlatformUfiSpace):
 
         # init GPIO sysfs
         self.init_gpio()
+
+        # onie syseeprom
+        self.insmod("x86-64-ufispace-s9501-18smt-onie-syseeprom.ko")
 
         #enable ipmi maintenance mode
         self.enable_ipmi_maintenance_mode()

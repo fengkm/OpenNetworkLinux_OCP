@@ -58,15 +58,15 @@ class OnlPlatform_x86_64_ufispace_s9600_64x_r0(OnlPlatformUfiSpace):
     SYS_OBJECT_ID=".9600.64"
     PORT_COUNT=64
     PORT_CONFIG="64x100"
-     
+
     def check_bmc_enable(self):
         return 1
-        
+
     def baseconfig(self):
 
         bmc_enable = self.check_bmc_enable()
         msg("bmc enable : %r\n" % (True if bmc_enable else False))
-        
+
         # record the result for onlp
         os.system("echo %d > /etc/onl/bmc_en" % bmc_enable)
 
@@ -78,7 +78,7 @@ class OnlPlatform_x86_64_ufispace_s9600_64x_r0(OnlPlatformUfiSpace):
 
         #CPLD
         self.insmod("x86-64-ufispace-s9600-64x-lpc")
-                
+
         ########### initialize I2C bus 0 ###########
         # init PCA9548
         self.new_i2c_devices(
@@ -109,13 +109,16 @@ class OnlPlatform_x86_64_ufispace_s9600_64x_r0(OnlPlatformUfiSpace):
             ]
         )
 
+        # init SFP EEPROM
+        for port in range(25, 27):
+            self.new_i2c_device('optoe2', 0x50, port)
         # init QSFP EEPROM
-        for port in range(29, 92):
+        for port in range(29, 93):
             self.new_i2c_device('sff8436', 0x50, port)
 
         # init Temperature
         self.new_i2c_devices(
-            [               
+            [
                 # CPU Board Temp
                 ('tmp75', 0x4F, 0),
             ]
@@ -144,7 +147,7 @@ class OnlPlatform_x86_64_ufispace_s9600_64x_r0(OnlPlatformUfiSpace):
             self.new_i2c_device("s9600_64x_cpld" + str(i+1), addr, 1)
 
         #config mac rov
-        
+
         cpld_addr=30
         cpld_bus=1
         rov_addr=0x76
@@ -152,12 +155,12 @@ class OnlPlatform_x86_64_ufispace_s9600_64x_r0(OnlPlatformUfiSpace):
         rov_bus=[10, 11]
         mask=[0b00000111, 0b00111000]
         shift=[0, 3]
-        
-        # vid to mac vdd value mapping 
+
+        # vid to mac vdd value mapping
         vdd_val_array=( 0.82,  0.82,  0.76,  0.78,  0.80,  0.84,  0.86,  0.88 )
-        # vid to rov reg value mapping 
+        # vid to rov reg value mapping
         rov_reg_array=( 0x73, 0x73, 0x67, 0x6b, 0x6f, 0x77, 0x7b, 0x7f )
-        
+
         for index, bus in enumerate(rov_bus):
             #get rov from cpld
             reg_val_str = subprocess.check_output("cat /sys/bus/i2c/devices/{}-00{}/cpld_mac_rov".format(cpld_bus, cpld_addr), shell=True)
@@ -167,7 +170,10 @@ class OnlPlatform_x86_64_ufispace_s9600_64x_r0(OnlPlatformUfiSpace):
             rov_reg_val = rov_reg_array[vid]
             #set rov to mac
             msg("Setting mac vdd %1.2f with rov register value 0x%x\n" % (mac_vdd_val, rov_reg_val) )
-            os.system("i2cset -y {} {} {} {}".format(rov_bus[index], rov_addr, rov_reg, rov_reg_val))            
+            os.system("i2cset -y {} {} {} {}".format(rov_bus[index], rov_addr, rov_reg, rov_reg_val))
+
+        # onie syseeprom
+        self.insmod("x86-64-ufispace-s9600-64x-onie-syseeprom.ko")
 
         self.enable_ipmi_maintenance_mode()
 
@@ -175,11 +181,11 @@ class OnlPlatform_x86_64_ufispace_s9600_64x_r0(OnlPlatformUfiSpace):
 
     def enable_ipmi_maintenance_mode(self):
         ipmi_ioctl = IPMI_Ioctl()
-            
+
         mode=ipmi_ioctl.get_ipmi_maintenance_mode()
         msg("Current IPMI_MAINTENANCE_MODE=%d\n" % (mode) )
-            
+
         ipmi_ioctl.set_ipmi_maintenance_mode(IPMI_Ioctl.IPMI_MAINTENANCE_MODE_ON)
-            
+
         mode=ipmi_ioctl.get_ipmi_maintenance_mode()
         msg("After IPMI_IOCTL IPMI_MAINTENANCE_MODE=%d\n" % (mode) )

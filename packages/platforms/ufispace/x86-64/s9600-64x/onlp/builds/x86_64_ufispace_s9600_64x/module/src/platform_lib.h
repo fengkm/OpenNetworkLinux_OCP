@@ -124,10 +124,10 @@
 #define PSU_PIN_OFFSET          0x97
 
 #define PSU_STATE_REG           0x15
-#define PSU0_PRESENT_MASK       0x40
-#define PSU1_PRESENT_MASK       0x80
-#define PSU0_PWGOOD_MASK        0x10
-#define PSU1_PWGOOD_MASK        0x20
+#define PSU0_PRESENT_MASK       0x04
+#define PSU1_PRESENT_MASK       0x08
+#define PSU0_PWGOOD_MASK        0x01
+#define PSU1_PWGOOD_MASK        0x02
 
 /* LED */
 #define LED_REG                 0x75
@@ -221,11 +221,11 @@ typedef enum led_oid_e {
 
 /** led_id */
 typedef enum led_id_e {
-    LED_ID_SYS_SYS = 1,
-    LED_ID_SYS_PSU0 = 2,
-    LED_ID_SYS_PSU1 = 3,
-    LED_ID_SYS_FAN = 4,
-    LED_ID_SYS_SYNC = 5,
+    LED_ID_SYS_SYNC = 1,
+    LED_ID_SYS_SYS = 2,
+    LED_ID_SYS_FAN = 3,
+    LED_ID_SYS_PSU0 = 4,
+    LED_ID_SYS_PSU1 = 5,
     LED_ID_SYS_ID = 6,
     LED_ID_FAN_TRAY1 = 7,
     LED_ID_FAN_TRAY2 = 8,

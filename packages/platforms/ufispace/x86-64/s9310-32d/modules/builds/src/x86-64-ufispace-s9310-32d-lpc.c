@@ -276,7 +276,7 @@ static ssize_t read_mux_reset_callback(struct device *dev,
 
     mutex_lock(&lpc_data->access_lock);
     reg_val=_mask_shift(inb(reg), mask);
-    len=sprintf(buf, "%d\n", _mask_shift(reg_val, mask));
+    len=sprintf(buf, "%d\n", reg_val);
     mutex_unlock(&lpc_data->access_lock);
 
     return len;

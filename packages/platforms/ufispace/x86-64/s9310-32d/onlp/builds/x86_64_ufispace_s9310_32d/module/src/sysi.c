@@ -41,40 +41,7 @@ bool bmc_enable = false;
 const char*
 onlp_sysi_platform_get(void)
 {
-    int mb_cpld1_addr = 0x700;
-    int mb_cpld1_board_type_rev;
-    int mb_cpld1_hw_rev, mb_cpld1_build_rev;
-
-    if (read_ioport(mb_cpld1_addr, &mb_cpld1_board_type_rev) < 0) {
-        AIM_LOG_ERROR("unable to read MB CPLD1 Board Type Revision\n");
-        return "x86-64-ufispace-s9310-32d-rx";
-    }
-    mb_cpld1_hw_rev = (((mb_cpld1_board_type_rev) >> 2 & 0x03));
-    mb_cpld1_build_rev = (((mb_cpld1_board_type_rev) & 0x03) | ((mb_cpld1_board_type_rev) >> 5 & 0x04));
-
-    if (mb_cpld1_hw_rev == 0 && mb_cpld1_build_rev == 0) {
-        return "x86-64-ufispace-s9310-32d-r0";
-    } else if (mb_cpld1_hw_rev == 1 && mb_cpld1_build_rev == 0) {
-        return "x86-64-ufispace-s9310-32d-r1";
-    } else if (mb_cpld1_hw_rev == 1 && mb_cpld1_build_rev == 1) {
-        return "x86-64-ufispace-s9310-32d-r2";
-    } else if (mb_cpld1_hw_rev == 1 && mb_cpld1_build_rev == 2) {
-        return "x86-64-ufispace-s9310-32d-r3";
-    } else if (mb_cpld1_hw_rev == 2 && mb_cpld1_build_rev == 1) {
-        return "x86-64-ufispace-s9310-32d-r4";
-    } else if (mb_cpld1_hw_rev == 2 && mb_cpld1_build_rev == 2) {
-        return "x86-64-ufispace-s9310-32d-r5";
-    } else if (mb_cpld1_hw_rev == 2 && mb_cpld1_build_rev == 3) {
-        return "x86-64-ufispace-s9310-32d-r6";
-    } else if (mb_cpld1_hw_rev == 3 && mb_cpld1_build_rev == 0) {
-        return "x86-64-ufispace-s9310-32d-r7";
-    } else if (mb_cpld1_hw_rev == 3 && mb_cpld1_build_rev == 1) {
-        return "x86-64-ufispace-s9310-32d-r8";
-    } else if (mb_cpld1_hw_rev == 3 && mb_cpld1_build_rev == 2) {
-        return "x86-64-ufispace-s9310-32d-r9";
-    } else {        
-        return "x86-64-ufispace-s9310-32d-r9";
-    }
+    return "x86-64-ufispace-s9310-32d-r0";
 }
 
 int
@@ -144,33 +111,30 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
         for (i=1; i<=FAN_NUM; i++) {
             *e++ = ONLP_FAN_ID_CREATE(i);
         }
-    }
-	
-    /* THERMALs Item */
-    if ( !bmc_enable ) {
+        /* THERMALs Item */
         for (i=1; i<=THERMAL_NUM; i++) {
             *e++ = ONLP_THERMAL_ID_CREATE(i);
         }
     } else {
+
         *e++ = THERMAL_OID_CPU_PECI;
-        //*e++ = THERMAL_OID_BMC_ENV;
-        //*e++ = THERMAL_OID_ENV;
-        //*e++ = THERMAL_OID_ENV_FRONT;
-        *e++ = THERMAL_OID_OP2_ENV;
-        *e++ = THERMAL_OID_J2_ENV_1;
-        *e++ = THERMAL_OID_J2_DIE_1;
-        *e++ = THERMAL_OID_J2_ENV_2;
-        *e++ = THERMAL_OID_J2_DIE_2;
-        //*e++ = THERMAL_OID_CPU_PKG;        
-        //*e++ = THERMAL_OID_CPU1;
-        //*e++ = THERMAL_OID_CPU2;
-        //*e++ = THERMAL_OID_CPU3;
-        //*e++ = THERMAL_OID_CPU4;
-        //*e++ = THERMAL_OID_CPU5;
-        //*e++ = THERMAL_OID_CPU6;
-        //*e++ = THERMAL_OID_CPU7;
-        //*e++ = THERMAL_OID_CPU8;
-        //*e++ = THERMAL_OID_CPU_BOARD;
+        *e++ = THERMAL_OID_CPU_ENV;
+        *e++ = THERMAL_OID_BMC_ENV;
+        *e++ = THERMAL_OID_MAC_ENV;
+        *e++ = THERMAL_OID_POWER_CONN;
+        *e++ = THERMAL_OID_400G_MODULE;
+        *e++ = THERMAL_OID_PSU0;
+        *e++ = THERMAL_OID_PSU1;
+        *e++ = THERMAL_OID_CPU_PKG;        
+        *e++ = THERMAL_OID_CPU1;
+        *e++ = THERMAL_OID_CPU2;
+        *e++ = THERMAL_OID_CPU3;
+        *e++ = THERMAL_OID_CPU4;
+        *e++ = THERMAL_OID_CPU5;
+        *e++ = THERMAL_OID_CPU6;
+        *e++ = THERMAL_OID_CPU7;
+        *e++ = THERMAL_OID_CPU8;
+        *e++ = THERMAL_OID_CPU_BOARD;
         
         *e++ = LED_OID_SYSTEM;        
         *e++ = LED_OID_PSU0;
@@ -183,7 +147,9 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
         *e++ = FAN_OID_FAN1;
         *e++ = FAN_OID_FAN2;
         *e++ = FAN_OID_FAN3;
-        *e++ = FAN_OID_FAN4;   
+        *e++ = FAN_OID_FAN4;
+        *e++ = FAN_OID_PSU0_FAN1;
+        *e++ = FAN_OID_PSU1_FAN1;
     }
     
     return ONLP_STATUS_OK;

@@ -68,21 +68,10 @@ onlp_fan_info_t fan_info[] = {
         ONLP_FAN_CAPS_GET_RPM,
     },
     {
-        { FAN_OID_PSU0_FAN2, "PSU 1 - Fan 2", 0 },
-        ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_F2B,
-        ONLP_FAN_CAPS_GET_RPM,
-    }
-        ,
-    {
         { FAN_OID_PSU1_FAN1, "PSU 2 - Fan 1", 0 },
         ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_F2B,
         ONLP_FAN_CAPS_GET_RPM,
     },
-    {
-        { FAN_OID_PSU1_FAN2, "PSU 2 - Fan 2", 0 },
-        ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_F2B,
-        ONLP_FAN_CAPS_GET_RPM,
-    }
 };
 
 /*
@@ -147,9 +136,7 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* rv)
         case FAN_ID_FAN3:
         case FAN_ID_FAN4:
         case FAN_ID_PSU0_FAN1:
-        case FAN_ID_PSU0_FAN2:    
         case FAN_ID_PSU1_FAN1:
-        case FAN_ID_PSU1_FAN2:
             rc = bmc_fan_info_get(rv, fan_id);
             break;
         default:            

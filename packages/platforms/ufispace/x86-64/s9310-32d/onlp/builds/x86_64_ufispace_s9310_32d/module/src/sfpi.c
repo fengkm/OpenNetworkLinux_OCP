@@ -54,13 +54,13 @@ onlp_sfpi_is_present(int port)
 {
     int status=1;
     
-    //QSFP, QSFPDD, SFP Ports
-    if (port < (QSFP_NUM + QSFPDD_NUM)) { //QSFP, QSFPDD
-        if (qsfp_present_get(port, &status) != ONLP_STATUS_OK) {
-            AIM_LOG_ERROR("qsfp_presnet_get() failed, port=%d\n", port);
+    //QSFPDD, SFP Ports
+    if (port < QSFPDD_NUM) { //QSFPDD
+        if (qsfpdd_present_get(port, &status) != ONLP_STATUS_OK) {
+            AIM_LOG_ERROR("qsfpdd_presnet_get() failed, port=%d\n", port);
             return ONLP_STATUS_E_INTERNAL;
         }
-    } else if (port >= (QSFP_NUM + QSFPDD_NUM) && port < PORT_NUM) { //SFP
+    } else if ((port >= QSFPDD_NUM) && (port < PORT_NUM)) { //SFP
         if (sfp_present_get(port, &status) != ONLP_STATUS_OK) {
             AIM_LOG_ERROR("sfp_presnet_get() failed, port=%d\n", port);
             return ONLP_STATUS_E_INTERNAL;
@@ -87,6 +87,97 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     return ONLP_STATUS_OK;
 }
 
+int
+qsfpdd_eeprom_read(int port, uint8_t data[256]) {
+    char eeprom_path[128];
+    int size = 0;
+
+    memset(eeprom_path, 0, sizeof(eeprom_path));
+    memset(data, 0, 256);
+
+    snprintf(eeprom_path, sizeof(eeprom_path), 
+                "/sys/bus/i2c/devices/%d-0050/eeprom", 
+                QSFPDD_BASE_BUS+port);
+
+    if(onlp_file_read(data, 256, &size, eeprom_path) != ONLP_STATUS_OK) {
+        AIM_LOG_ERROR("Unable to read eeprom from QSFPDD port(%d)\r\n", port);
+        check_and_do_i2c_mux_reset(port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    
+    return ONLP_STATUS_OK;
+}
+
+int
+sfp_cpu_eeprom_path_get(int port, char *eeprom_path, int size) {
+    char cmd[128];
+    int ret;
+
+    if (port == 0) {
+        snprintf(cmd, sizeof(cmd), CMD_SFP_EEPROM_GET, SFP_0_IFNAME, SFP_0_IFNAME);
+        ret = system(cmd);
+        if (ret == 0) {
+            snprintf(eeprom_path, size, "/tmp/.sfp.%s.eeprom", SFP_0_IFNAME);
+        } else {
+            AIM_LOG_ERROR("Unable to get eeprom path for sfp port %d\n", port);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    } else {
+        snprintf(cmd, sizeof(cmd), CMD_SFP_EEPROM_GET, SFP_1_IFNAME, SFP_1_IFNAME);
+        ret = system(cmd);
+        if (ret == 0) {
+            snprintf(eeprom_path, size, "/tmp/.sfp.%s.eeprom", SFP_1_IFNAME);
+        } else {
+            AIM_LOG_ERROR("Unable to get eeprom path for sfp port %d\n", port);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    }
+
+    return ONLP_STATUS_OK;
+}
+
+int
+sfp_mac_eeprom_path_get(int port, char *eeprom_path, int size) {
+
+    snprintf(eeprom_path, size, 
+                "/sys/bus/i2c/devices/%d-0050/eeprom", 
+                SFP_BASE_BUS+port);
+
+    return ONLP_STATUS_OK;
+}
+
+
+int 
+sfp_eeprom_read(int port, uint8_t data[256]) {
+    int ret;
+    char eeprom_path[256];
+    int size = 0;
+
+    memset(eeprom_path, 0, sizeof(eeprom_path));
+    if(port < SFP_CPU_NUM) { // cpu sfp
+        ret = sfp_cpu_eeprom_path_get(port, eeprom_path, sizeof(eeprom_path));
+    } else { // mac sfp
+        ret = sfp_mac_eeprom_path_get(port - SFP_CPU_NUM, eeprom_path, 
+                sizeof(eeprom_path));
+    }
+
+    if (ret != ONLP_STATUS_OK) {
+        return ONLP_STATUS_E_INTERNAL;
+    } else {
+        // read eeprom data
+        // debug
+        // AIM_LOG_INFO("[%s] eeprom_path=%s", __FUNCTION__, eeprom_path);
+        if(onlp_file_read(data, 256, &size, eeprom_path) != ONLP_STATUS_OK) {
+            AIM_LOG_ERROR("Unable to read eeprom from port %d\n", port);
+            check_and_do_i2c_mux_reset(port);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    }
+
+    return ret;
+}
+
+
 /*
  * This function reads the SFPs idrom and returns in
  * in the data buffer provided.
@@ -94,53 +185,21 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 int
 onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {   
-    char eeprom_path[512];
-    int size = 0;
-    int real_port = 0;
     int ret;
-    
-    memset(eeprom_path, 0, sizeof(eeprom_path));    
+     
     memset(data, 0, 256);
-
     //QSFP, QSFPDD, SFP real ports
-    if (port >= 20 && port <=39) { //QSFP
-        real_port = (port % 2) == 0 ? port + 1 : port - 1;
-        snprintf(eeprom_path, sizeof(eeprom_path), "/sys/bus/i2c/devices/%d-0050/eeprom", real_port+25);
-    } else if (port >= 0 && port < (QSFP_NUM + QSFPDD_NUM)) { //QSFPDD
-        real_port = port;
-        snprintf(eeprom_path, sizeof(eeprom_path), "/sys/bus/i2c/devices/%d-0050/eeprom", real_port+25);
-    } else if (port >= (QSFP_NUM + QSFPDD_NUM) && port < PORT_NUM) { //SFP
-        real_port = port - QSFP_NUM - QSFPDD_NUM;
-        if (real_port == 0) {
-            ret = system("ethtool -m eth1 raw on length 256 > /tmp/.sfp.eth1.eeprom");
-            if (ret == 0) {
-                snprintf(eeprom_path, sizeof(eeprom_path), "/tmp/.sfp.eth1.eeprom");
-            } else {
-                AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
-                return ONLP_STATUS_E_INTERNAL;
-            }
-        } else {
-            ret = system("ethtool -m eth2 raw on length 256 > /tmp/.sfp.eth2.eeprom");
-            if (ret == 0) {
-                snprintf(eeprom_path, sizeof(eeprom_path), "/tmp/.sfp.eth2.eeprom");
-            } else {
-                AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
-                return ONLP_STATUS_E_INTERNAL;
-            }
-        }
-    } else { //unknown ports
+    if (port >= 0 && port < QSFPDD_NUM) { //QSFPDD
+        ret = qsfpdd_eeprom_read(port, data);
+    } else if (port >= QSFPDD_NUM && port < PORT_NUM) { //sfp
+        ret = sfp_eeprom_read(port - QSFPDD_NUM, data);
+    } else {
         AIM_LOG_ERROR("unknown ports, port=%d\n", port);
         return ONLP_STATUS_E_UNSUPPORTED;
     }
 
-    if(onlp_file_read(data, 256, &size, eeprom_path) != ONLP_STATUS_OK) {
+    if(ret != ONLP_STATUS_OK) {
         AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
-        check_and_do_i2c_mux_reset(port);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    if (size != 256) {
-        AIM_LOG_ERROR("Unable to read eeprom from port(%d), size is different!\r\n", port);
         check_and_do_i2c_mux_reset(port);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -152,16 +211,16 @@ int
 onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
     int i=0, value=0, rc=0;
-    int qsfpx_num = (QSFP_NUM + QSFPDD_NUM);
 
-    /* Populate bitmap - QSFP and QSFPDD ports*/
-    for(i = 0; i < qsfpx_num; i++) {
+    /* Populate bitmap - QSFPDD ports*/
+    for(i = 0; i < QSFPDD_NUM; i++) {
         AIM_BITMAP_MOD(dst, i, 0);
     }
 
     /* Populate bitmap - SFP+ ports*/
-    for(i = qsfpx_num; i < PORT_NUM; i++) {
-        if ((rc=onlp_sfpi_control_get(i, ONLP_SFP_CONTROL_RX_LOS, &value)) != ONLP_STATUS_OK) {
+    for(i = QSFPDD_NUM; i < PORT_NUM; i++) {
+        if ((rc=onlp_sfpi_control_get(i, ONLP_SFP_CONTROL_RX_LOS, &value)) 
+                != ONLP_STATUS_OK) {
             return ONLP_STATUS_E_INTERNAL;
         } else {
             AIM_BITMAP_MOD(dst, i, value);
@@ -174,151 +233,109 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 int
 onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 {
-    int rc;
     uint8_t data[8];
-    int data_len = 0, data_value = 0, data_mask = 0;
-    char sysfs_path[128];
-    int cpld_addr = 0x30;
-    int qsfpx_num = (QSFP_NUM + QSFPDD_NUM);
+    int data_len = 0, data_value = 0;
+    char sysfs[128];
+    int port_mask, port_index;
+    int rc;
     
-    memset(data, 0, sizeof(data));
-    memset(sysfs_path, 0, sizeof(sysfs_path));
-
     //QSFPDD ports are not supported
-    if (port < qsfpx_num || port >= PORT_NUM) {
+    if (port < QSFPDD_NUM || port >= PORT_NUM) {
         return ONLP_STATUS_E_UNSUPPORTED;
     }
 
+    // sfp port number
+    port_index = port - QSFPDD_NUM;
+ 
     //sysfs path
-    if (control == ONLP_SFP_CONTROL_RX_LOS || control == ONLP_SFP_CONTROL_TX_FAULT) {
-        snprintf(sysfs_path, sizeof(sysfs_path), SYS_DEV "%d-%04x/cpld_sfp_port_status", I2C_BUS_1, cpld_addr);
+    if (control == ONLP_SFP_CONTROL_RX_LOS) {
+        snprintf(sysfs, sizeof(sysfs), "%s/%s", MB_CPLD2_SYSFS_PATH, 
+                    MB_CPLD_SFP_RXLOS_ATTR);
+    } else if (control == ONLP_SFP_CONTROL_TX_FAULT) {
+        snprintf(sysfs, sizeof(sysfs), "%s/%s", MB_CPLD2_SYSFS_PATH, 
+                    MB_CPLD_SFP_TXFLT_ATTR);
     } else if (control == ONLP_SFP_CONTROL_TX_DISABLE) {
-        snprintf(sysfs_path, sizeof(sysfs_path), SYS_DEV "%d-%04x/cpld_sfp_port_config", I2C_BUS_1, cpld_addr);
+        snprintf(sysfs, sizeof(sysfs), "%s/%s", MB_CPLD2_SYSFS_PATH, 
+                    MB_CPLD_SFP_TXDIS_ATTR);
     } else {
         return ONLP_STATUS_E_UNSUPPORTED;
     }
 
-    if ((rc = onlp_file_read(data, sizeof(data), &data_len, sysfs_path)) != ONLP_STATUS_OK) {
-        AIM_LOG_ERROR("onlp_file_read failed, error=%d, %s", rc, sysfs_path);
+    if ((rc = onlp_file_read(data, sizeof(data), &data_len, sysfs)) 
+            != ONLP_STATUS_OK) {
+        AIM_LOG_ERROR("onlp_file_read failed, error=%d, %s", rc, sysfs);
         return ONLP_STATUS_E_INTERNAL;
     }
 
     //hex to int
     data_value = (int) strtol((char *)data, NULL, 0);
 
-    switch(control)
-        {
-        case ONLP_SFP_CONTROL_RX_LOS:
-            {
-                //SFP+ Port 0
-                if ( port == qsfpx_num ) {
-                    data_mask = 0x04;
-                } else { //SFP+ Port 1
-                    data_mask = 0x40;
-                }
-                *value = data_value & data_mask;
-                rc = ONLP_STATUS_OK;
-                break;
-            }
+    // mask value
+    port_mask = 0b00000001 << port_index;
 
-        case ONLP_SFP_CONTROL_TX_FAULT:
-            {
-                //SFP+ Port 0
-                if ( port == qsfpx_num ) {
-                    data_mask = 0x02;
-                } else { //SFP+ Port 1
-                    data_mask = 0x20;
-                }
-                *value = data_value & data_mask;
-                rc = ONLP_STATUS_OK;
-                break;
-            }
 
-        case ONLP_SFP_CONTROL_TX_DISABLE:
-            {
-                //SFP+ Port 0
-                if ( port == qsfpx_num ) {
-                    data_mask = 0x01;
-                } else { //SFP+ Port 1
-                    data_mask = 0x10;
-                }
-                *value = data_value & data_mask;
-                rc = ONLP_STATUS_OK;
-                break;
-            }
-
-        default:
-            rc = ONLP_STATUS_E_UNSUPPORTED;
-        }
-
-    return rc;
+    *value = (data_value & port_mask) >> port_index;
+    return ONLP_STATUS_OK;
 }
 
 int
 onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
-    int rc;
-    uint8_t data[8];
-    int data_len = 0, data_value = 0, data_mask = 0;
-    char sysfs_path[128];
-    int cpld_addr = 0x30;
-    int qsfpx_num = (QSFP_NUM + QSFPDD_NUM);
-    int reg_val = 0;
-    
-    memset(data, 0, sizeof(data));
-    memset(sysfs_path, 0, sizeof(sysfs_path));
 
+    uint8_t data[8];
+    int data_len = 0, data_value = 0;
+    char sysfs[128];
+    int port_mask, port_index;
+    int reg_val = 0;
+    int rc;
+
+    
     //QSFPDD ports are not supported
-    if (port < qsfpx_num || port >= PORT_NUM) {
+    if (port < QSFPDD_NUM || port >= PORT_NUM) {
         return ONLP_STATUS_E_UNSUPPORTED;
     }
 
+    // sfp port number
+    port_index = port - QSFPDD_NUM;
+ 
     //sysfs path
     if (control == ONLP_SFP_CONTROL_TX_DISABLE) {
-        snprintf(sysfs_path, sizeof(sysfs_path), SYS_DEV "%d-%04x/cpld_sfp_port_config", I2C_BUS_1, cpld_addr);
+        snprintf(sysfs, sizeof(sysfs), "%s/%s", MB_CPLD2_SYSFS_PATH,
+                    MB_CPLD_SFP_TXDIS_ATTR);
     } else {
         return ONLP_STATUS_E_UNSUPPORTED;
     }
 
-    if ((rc = onlp_file_read(data, sizeof(data), &data_len, sysfs_path)) != ONLP_STATUS_OK) {
-        AIM_LOG_ERROR("onlp_file_read failed, error=%d, %s", rc, sysfs_path);
+    if ((rc = onlp_file_read(data, sizeof(data), &data_len, sysfs)) 
+            != ONLP_STATUS_OK) {
+        AIM_LOG_ERROR("onlp_file_read failed, error=%d, %s", rc, sysfs);
         return ONLP_STATUS_E_INTERNAL;
     }
 
     //hex to int
     data_value = (int) strtol((char *)data, NULL, 0);
 
-    switch(control)
-        {
+    // mask value
+    port_mask = 0b00000001 << port_index;
 
-        case ONLP_SFP_CONTROL_TX_DISABLE:
-            {
-                //SFP+ Port 0
-                if (port == qsfpx_num) {
-                    data_mask = 0x01;
-                } else { //SFP+ Port 1
-                    data_mask = 0x10;
-                }
+    // update reg val
+    if (value == 1) {
+        reg_val = data_value | port_mask;
+    } else {
+        reg_val = data_value & ~port_mask;
+    }
 
-                if (value == 1) {
-                    reg_val = data_value | data_mask;
-                } else {
-                    reg_val = data_value & ~data_mask;
-                }
-                if ((rc = onlp_file_write_int(reg_val, "%x", sysfs_path)) != ONLP_STATUS_OK) {
-                    AIM_LOG_ERROR("Unable to write cpld_sfp_port_config, error=%d, sysfs=%s, reg_val=%x", rc, sysfs_path, reg_val);
-                    return ONLP_STATUS_E_INTERNAL;
-                }
-                rc = ONLP_STATUS_OK;
-                break;
-            }
-
-        default:
-            rc = ONLP_STATUS_E_UNSUPPORTED;
-        }
-
-    return rc;
+    // write reg val back
+    if ((rc = onlp_file_write_int(reg_val, "%x", sysfs)) 
+            != ONLP_STATUS_OK) {
+        AIM_LOG_ERROR("Unable to write tx disable value, error=%d, \
+                                    sysfs=%s, reg_val=%x", rc, sysfs, reg_val);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    
+    return ONLP_STATUS_OK;
 }
+
 
 /*
  * De-initialize the SFPI subsystem.

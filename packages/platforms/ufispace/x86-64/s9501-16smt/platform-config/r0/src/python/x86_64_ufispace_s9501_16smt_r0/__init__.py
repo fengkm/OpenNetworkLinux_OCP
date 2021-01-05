@@ -19,7 +19,7 @@ class OnlPlatform_x86_64_ufispace_s9501_16smt_r0(OnlPlatformUfiSpace):
     MODEL="S9501-16SMT"
     SYS_OBJECT_ID=".9501.16"
     PORT_COUNT=16
-    PORT_CONFIG="4x1 + 8x2.5 + 4x10"
+    PORT_CONFIG="12x1 + 4x10"
 
     def check_bmc_enable(self):
         return 0

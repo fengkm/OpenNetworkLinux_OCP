@@ -298,7 +298,7 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
         {
             memset(buf, 0, sizeof(buf));
 
-            if( dev_num >= 16 && dev_num <=19 ) {
+            if( dev_num >= 15 && dev_num <=18 ) {
                 sprintf(get_data_cmd, CMD_BMC_CACHE_GET, bmc_cache[dev_num].name, 5);
                 fp = popen(get_data_cmd, "r");
                 if(fp != NULL)
@@ -796,28 +796,60 @@ qsfp_present_get(int port, int *pres_val)
     }
     status = (int) strtol((char *)data, NULL, 0);
 
-    *pres_val = !((status & 0x2) >> 1);
+    *pres_val = !((status >> (port % 8))  & 0x1);
 
     return ONLP_STATUS_OK;
 }
 
 int sfp_present_get(int port, int *pres_val)
 {
-    int ret;
-    char cmd[80] = {0};
+    int rc;
+    uint8_t data[8];
+    int data_len = 0, data_value = 0, data_mask = 0;
+    char sysfs_path[128];
+    int real_port = 0;
+    int cpld_addr = 0x0;
 
-    memset(cmd, 0, sizeof(cmd));
+    memset(data, 0, sizeof(data));
+    memset(sysfs_path, 0, sizeof(sysfs_path));
 
-    port = port - QSFP_NUM - QSFPDD_NUM;
-    sprintf(cmd, "ethtool -m eth%d raw on length 1 > /dev/null 2>&1", port+1);
+    real_port = port - QSFP_NUM - QSFPDD_NUM;
+    switch(real_port) {
+        case 0:
+            cpld_addr = 0x30;
+            data_mask = 0x01;
+            snprintf(sysfs_path, sizeof(sysfs_path), SYS_DEV "%d-%04x/cpld_sfp_status_cpu", I2C_BUS_1, cpld_addr);
+            break;
+        case 1:
+            cpld_addr = 0x30;
+            data_mask = 0x10;
+            snprintf(sysfs_path, sizeof(sysfs_path), SYS_DEV "%d-%04x/cpld_sfp_status_cpu", I2C_BUS_1, cpld_addr);
+            break;
+        case 2:
+            cpld_addr = 0x31;
+            data_mask = 0x01;
+            snprintf(sysfs_path, sizeof(sysfs_path), SYS_DEV "%d-%04x/cpld_sfp_status_inband", I2C_BUS_1, cpld_addr);
+            break;
 
-    if (port < SFP_NUM) {
-        ret = system(cmd);
-        *pres_val = (ret==0) ? 1 : 0;
-    } else {
-        AIM_LOG_ERROR("unknown sfp port, port=%d\n", port);
+        case 3:
+            cpld_addr = 0x31;
+            data_mask = 0x10;
+            snprintf(sysfs_path, sizeof(sysfs_path), SYS_DEV "%d-%04x/cpld_sfp_status_inband", I2C_BUS_1, cpld_addr);
+            break;
+        default:
+            AIM_LOG_ERROR("unknown sfp port, port=%d\n", port);
+            return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if ((rc = onlp_file_read(data, sizeof(data), &data_len, sysfs_path)) != ONLP_STATUS_OK) {
+        AIM_LOG_ERROR("onlp_file_read failed, error=%d, sysfs=%s", rc, sysfs_path);
         return ONLP_STATUS_E_INTERNAL;
     }
+
+    //hex to int
+    data_value = (int) strtol((char *)data, NULL, 0);
+
+    *pres_val = !(data_value & data_mask);
 
     return ONLP_STATUS_OK;
 }
@@ -1017,7 +1049,7 @@ qsfp_port_to_sysfs_attr_offset(int port)
 {
     int sysfs_attr_offset = 0;
 
-    sysfs_attr_offset = (port % PORT_PER_CPLD);
+    sysfs_attr_offset = (port % PORT_PER_CPLD) / 8;
 
     return sysfs_attr_offset;
 }
@@ -1088,7 +1120,7 @@ bmc_fan_info_get(onlp_fan_info_t* info, int id)
 
     //check presence for fantray 1-4
     if (id >= FAN_ID_FAN0 && id <= FAN_ID_FAN3) {
-        rv = bmc_sensor_read(id - FAN_ID_FAN0 + 14, FAN_SENSOR, &data);
+        rv = bmc_sensor_read(id - FAN_ID_FAN0 + 15, FAN_SENSOR, &data);
         if ( rv != ONLP_STATUS_OK) {
             AIM_LOG_ERROR("unable to read sensor info from BMC, sensor=%d\n", id);
             return rv;
@@ -1105,7 +1137,7 @@ bmc_fan_info_get(onlp_fan_info_t* info, int id)
 
     //get fan rpm
 
-    rv = bmc_sensor_read(id - FAN_ID_FAN0 + 8, FAN_SENSOR, &data);
+    rv = bmc_sensor_read(id - FAN_ID_FAN0 + 9, FAN_SENSOR, &data);
     if ( rv != ONLP_STATUS_OK) {
         AIM_LOG_ERROR("unable to read sensor info from BMC, sensor=%d\n", id);
         return rv;
