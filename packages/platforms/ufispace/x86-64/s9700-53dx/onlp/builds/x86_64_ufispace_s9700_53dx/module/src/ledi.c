@@ -20,20 +20,25 @@
  * </bsn.cl>
  ************************************************************
  *
- *
+ * LED Implementation
  *
  ***********************************************************/
-#include <onlp/platformi/ledi.h>
-#include <onlplib/file.h>
-#include <sys/mman.h>
 #include <stdio.h>
 #include <string.h>
-#include <fcntl.h>
+#include <onlp/platformi/ledi.h>
+#include <onlplib/file.h>
+//#include <sys/mman.h>
+//#include <fcntl.h>
 
 #include "platform_lib.h"
 
-/*
+/**
  * Get the information for the given LED OID.
+ * 
+ * [01] CHASSIS----[01] ONLP_LED_SYSTEM
+ *            |----[02] ONLP_LED_PSU0
+ *            |----[03] ONLP_LED_PSU1
+ *            |----[04] ONLP_LED_FAN
  */
 static onlp_led_info_t __onlp_led_info[ONLP_LED_COUNT] =
 {
@@ -80,7 +85,12 @@ static onlp_led_info_t __onlp_led_info[ONLP_LED_COUNT] =
     },
 };
 
-static int ufi_ledi_info_get(int local_id, onlp_led_info_t* info)
+/**
+ * @brief Update the information structure for the given LED
+ * @param id The LED Local ID
+ * @param[out] info Receives the FAN information.
+ */
+static int update_ledi_info(int local_id, onlp_led_info_t* info)
 {
     int ret = ONLP_STATUS_OK;
     int value;
@@ -205,16 +215,12 @@ int onlp_ledi_info_get(onlp_oid_id_t id, onlp_led_info_t* info)
     *info = __onlp_led_info[local_id];
     ONLP_TRY(onlp_ledi_hdr_get(id, &info->hdr));
 
-    switch (local_id) {
-        case ONLP_LED_SYSTEM:
-        case ONLP_LED_PSU0:
-        case ONLP_LED_PSU1:
-        case ONLP_LED_FAN:
-            ret = ufi_ledi_info_get(local_id, info);
-            break;
-        default:
-            return ONLP_STATUS_E_INTERNAL;
-            break;
+    //get ledi info
+    if (local_id >= ONLP_LED_SYSTEM && local_id <= ONLP_LED_FAN) {
+        ret = update_ledi_info(local_id, info);
+    } else {
+        AIM_LOG_ERROR("unknown LED id (%d), func=%s\n", local_id, __FUNCTION__);
+        ret = ONLP_STATUS_E_PARAM;
     }
 
     return ret;

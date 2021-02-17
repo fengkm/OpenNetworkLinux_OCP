@@ -20,7 +20,7 @@
  * </bsn.cl>
  ************************************************************
  *
- *
+ * Platform Lib
  *
  ***********************************************************/
 #ifndef __PLATFORM_LIB_H__
@@ -89,7 +89,7 @@ enum onlp_thermal_id {
     ONLP_THERMAL_BMC_ENV   = 19,
     ONLP_THERMAL_ENV       = 20,
     ONLP_THERMAL_ENV_FRONT = 21,
-    ONLP_THERMAL_MAX       = 22,
+    ONLP_THERMAL_MAX       = ONLP_THERMAL_ENV_FRONT+1,
 };
 
 #define ONLP_THERMAL_COUNT ONLP_THERMAL_MAX /*include "reserved"*/
@@ -106,7 +106,7 @@ enum onlp_fan_id {
     ONLP_PSU0_FAN_2   = 6,
     ONLP_PSU1_FAN_1   = 7,
     ONLP_PSU1_FAN_2   = 8,
-    ONLP_FAN_MAX      = 9,
+    ONLP_FAN_MAX      = ONLP_PSU1_FAN_2+1,
 };
 
 #define ONLP_FAN_COUNT ONLP_FAN_MAX /*include "reserved"*/
@@ -129,7 +129,7 @@ enum onlp_psu_id {
     ONLP_PSU_1_IOUT    = 12,
     ONLP_PSU_1_STBVOUT = 13,
     ONLP_PSU_1_STBIOUT = 14,
-    ONLP_PSU_MAX       = 15
+    ONLP_PSU_MAX       = ONLP_PSU_1+1,
 };
 
 #define ONLP_PSU_COUNT ONLP_PSU_MAX /*include "reserved"*/
@@ -146,7 +146,7 @@ enum onlp_led_id {
     //ONLP_LED_FAN_TRAY2 = 6,
     //ONLP_LED_FAN_TRAY3 = 7,
     //ONLP_LED_FAN_TRAY4 = 8,
-    ONLP_LED_MAX       = 5,
+    ONLP_LED_MAX       = ONLP_LED_FAN+1,
 };
 
 #define ONLP_LED_COUNT ONLP_LED_MAX /*include "reserved"*/

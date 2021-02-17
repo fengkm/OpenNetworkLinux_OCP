@@ -23,16 +23,17 @@
  *
  *
  ***********************************************************/
-#include <onlp/platformi/sfpi.h>
-#include <fcntl.h> /* For O_RDWR && open */
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/ioctl.h>
+#include <onlp/platformi/sfpi.h>
 #include <onlplib/i2c.h>
-#include "platform_lib.h"
-#include <dirent.h>
 #include <onlplib/file.h>
+//#include <fcntl.h> /* For O_RDWR && open */
+//#include <sys/ioctl.h>
+//#include <dirent.h>
+
+#include "platform_lib.h"
 
 
 /**

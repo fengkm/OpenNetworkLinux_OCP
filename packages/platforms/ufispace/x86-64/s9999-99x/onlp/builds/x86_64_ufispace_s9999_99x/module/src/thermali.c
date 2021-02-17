@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <onlplib/file.h>
 #include <onlp/platformi/thermali.h>
-#include <fcntl.h>
+//#include <fcntl.h>
 #include "platform_lib.h"
 
 

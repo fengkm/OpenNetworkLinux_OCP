@@ -23,17 +23,17 @@
  *
  *
  ***********************************************************/
-#include <onlp/platformi/sfpi.h>
-#include <fcntl.h> /* For O_RDWR && open */
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/ioctl.h>
+#include <onlp/platformi/sfpi.h>
 #include <onlplib/i2c.h>
-#include "platform_lib.h"
-#include <dirent.h>
 #include <onlplib/file.h>
+//#include <fcntl.h> /* For O_RDWR && open */
+//#include <sys/ioctl.h>
+//#include <dirent.h>
 
+#include "platform_lib.h"
 
 
 #define QSFP_PORT_NUM    40
@@ -404,7 +404,7 @@ int onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
     for(p = 0; p < ALL_PORT_NUM; p++) {
         AIM_BITMAP_SET(bmap, p);
     }
-
+    
     return ONLP_STATUS_OK;
 }
 
@@ -442,7 +442,7 @@ int onlp_sfpi_type_get(onlp_oid_id_t id, onlp_sfp_type_t* rtype)
 int onlp_sfpi_is_present(onlp_oid_id_t id)
 {
     int local_id = ONLP_OID_ID_GET(id);
-    int status = 1;
+    int status = 0;
     int ret = ONLP_STATUS_OK;
 
     if (local_id > ALL_PORT_NUM) {
@@ -472,7 +472,7 @@ int onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     for (p = 0; p < ALL_PORT_NUM; p++) {
         ret = onlp_sfpi_is_present(p);
         AIM_BITMAP_MOD(dst, p, ret);
-    } 
+    }
 
     return ONLP_STATUS_OK;
 }
@@ -523,17 +523,20 @@ int onlp_sfpi_dev_read(onlp_oid_id_t id, int devaddr, int addr,
     }
 
     devaddr = 0x50;
-    if (local_id < QSFP_PORT_NUM) { //QSFP
+    if (local_id < QSFP_PORT_NUM) {
+        /* QSFP */
         port_id = local_id;
         bus_id = qsfp_port_eeprom_bus_id_array[port_id];
         ONLP_TRY(onlp_i2c_block_read(bus_id, devaddr, addr, len, dst, ONLP_I2C_F_FORCE));
 
-    } else if (local_id >= QSFP_PORT_NUM && local_id < (QSFP_PORT_NUM + QSFPDD_PORT_NUM)) { //QSFPDD
+    } else if (local_id >= QSFP_PORT_NUM && local_id < (QSFP_PORT_NUM + QSFPDD_PORT_NUM)) {
+        /* QSFPDD */
         port_id = local_id - QSFP_PORT_NUM;
         bus_id = qsfpdd_port_eeprom_bus_id_array[port_id];
         ONLP_TRY(onlp_i2c_block_read(bus_id, devaddr, addr, len, dst, ONLP_I2C_F_FORCE));
 
-    } else if (local_id >= (QSFP_PORT_NUM + QSFPDD_PORT_NUM) && local_id < ALL_PORT_NUM) { //SFP
+    } else if (local_id >= (QSFP_PORT_NUM + QSFPDD_PORT_NUM) && local_id < ALL_PORT_NUM) {
+        /* SFP */
         port_id = local_id - (QSFP_PORT_NUM + QSFPDD_PORT_NUM);
         ret = ufi_sfpi_sfp_dev_read(port_id, dst, len);
         if (ret != ONLP_STATUS_OK) {
@@ -582,17 +585,20 @@ int onlp_sfpi_dev_readb(onlp_oid_id_t id, int devaddr, int addr)
     }
 
     devaddr = 0x50;
-    if (local_id < QSFP_PORT_NUM) { //QSFP
+    if (local_id < QSFP_PORT_NUM) {
+        /* QSFP */
         port_id = local_id;
         bus_id = qsfp_port_eeprom_bus_id_array[port_id];
-        ONLP_TRY(onlp_i2c_readb(bus_id, devaddr, addr, ONLP_I2C_F_FORCE));
+        ret = onlp_i2c_readb(bus_id, devaddr, addr, ONLP_I2C_F_FORCE);
 
-    } else if (local_id >= QSFP_PORT_NUM && local_id < (QSFP_PORT_NUM + QSFPDD_PORT_NUM)) { //QSFPDD
+    } else if (local_id >= QSFP_PORT_NUM && local_id < (QSFP_PORT_NUM + QSFPDD_PORT_NUM)) {
+        /* QSFPDD */
         port_id = local_id - QSFP_PORT_NUM;
         bus_id = qsfpdd_port_eeprom_bus_id_array[port_id];
-        ONLP_TRY(onlp_i2c_readb(bus_id, devaddr, addr, ONLP_I2C_F_FORCE));
+        ret = onlp_i2c_readb(bus_id, devaddr, addr, ONLP_I2C_F_FORCE);
 
-    } else if (local_id >= (QSFP_PORT_NUM + QSFPDD_PORT_NUM) && local_id < ALL_PORT_NUM) { //SFP
+    } else if (local_id >= (QSFP_PORT_NUM + QSFPDD_PORT_NUM) && local_id < ALL_PORT_NUM) {
+        /* SFP */
         return ONLP_STATUS_E_UNSUPPORTED;
 
     } else {
@@ -616,7 +622,6 @@ int onlp_sfpi_dev_writeb(onlp_oid_id_t id, int devaddr, int addr,
     int bus_id = -1;
     int ret = ONLP_STATUS_OK;
     int port_id;
-    //char command[255] = "";
 
     if (onlp_sfpi_is_present(id) != 1) {
         AIM_LOG_INFO("sfp module (port=%d) is absent.\n", local_id);
@@ -624,17 +629,20 @@ int onlp_sfpi_dev_writeb(onlp_oid_id_t id, int devaddr, int addr,
     }
 
     devaddr = 0x50;
-    if (local_id < QSFP_PORT_NUM) { //QSFP
+    if (local_id < QSFP_PORT_NUM) {
+        /* QSFP */
         port_id = local_id;
         bus_id = qsfp_port_eeprom_bus_id_array[port_id];
-        ONLP_TRY(onlp_i2c_writeb(bus_id, devaddr, addr, value, ONLP_I2C_F_FORCE));
+        ret = onlp_i2c_writeb(bus_id, devaddr, addr, value, ONLP_I2C_F_FORCE);
 
-    } else if (local_id >= QSFP_PORT_NUM && local_id < (QSFP_PORT_NUM + QSFPDD_PORT_NUM)) { //QSFPDD
+    } else if (local_id >= QSFP_PORT_NUM && local_id < (QSFP_PORT_NUM + QSFPDD_PORT_NUM)) {
+        /* QSFPDD */
         port_id = local_id - QSFP_PORT_NUM;
         bus_id = qsfpdd_port_eeprom_bus_id_array[port_id];
-        ONLP_TRY(onlp_i2c_writeb(bus_id, devaddr, addr, value, ONLP_I2C_F_FORCE));
+        ret = onlp_i2c_writeb(bus_id, devaddr, addr, value, ONLP_I2C_F_FORCE);
 
-    } else if (local_id >= (QSFP_PORT_NUM + QSFPDD_PORT_NUM) && local_id < ALL_PORT_NUM) { //SFP
+    } else if (local_id >= (QSFP_PORT_NUM + QSFPDD_PORT_NUM) && local_id < ALL_PORT_NUM) {
+        /* SFP */
         return ONLP_STATUS_E_UNSUPPORTED;
 
     } else {
@@ -657,7 +665,6 @@ int onlp_sfpi_dev_readw(onlp_oid_id_t id, int devaddr, int addr)
     int bus_id = -1;
     int ret = ONLP_STATUS_OK;
     int port_id;
-    //char command[255] = "";
 
     if (onlp_sfpi_is_present(id) != 1) {
         AIM_LOG_INFO("sfp module (port=%d) is absent.\n", local_id);
@@ -665,17 +672,20 @@ int onlp_sfpi_dev_readw(onlp_oid_id_t id, int devaddr, int addr)
     }
 
     devaddr = 0x50;
-    if (local_id < QSFP_PORT_NUM) { //QSFP
+    if (local_id < QSFP_PORT_NUM) {
+        /* QSFP */
         port_id = local_id;
         bus_id = qsfp_port_eeprom_bus_id_array[port_id];
-        ONLP_TRY(onlp_i2c_readw(bus_id, devaddr, addr, ONLP_I2C_F_FORCE));
+        ret = onlp_i2c_readw(bus_id, devaddr, addr, ONLP_I2C_F_FORCE);
 
-    } else if (local_id >= QSFP_PORT_NUM && local_id < (QSFP_PORT_NUM + QSFPDD_PORT_NUM)) { //QSFPDD
+    } else if (local_id >= QSFP_PORT_NUM && local_id < (QSFP_PORT_NUM + QSFPDD_PORT_NUM)) {
+        /* QSFPDD */
         port_id = local_id - QSFP_PORT_NUM;
         bus_id = qsfpdd_port_eeprom_bus_id_array[port_id];
-        ONLP_TRY(onlp_i2c_readw(bus_id, devaddr, addr, ONLP_I2C_F_FORCE));
+        ret = onlp_i2c_readw(bus_id, devaddr, addr, ONLP_I2C_F_FORCE);
 
-    } else if (local_id >= (QSFP_PORT_NUM + QSFPDD_PORT_NUM) && local_id < ALL_PORT_NUM) { //SFP
+    } else if (local_id >= (QSFP_PORT_NUM + QSFPDD_PORT_NUM) && local_id < ALL_PORT_NUM) {
+        /* SFP */
         return ONLP_STATUS_E_UNSUPPORTED;
 
     } else {
@@ -699,7 +709,6 @@ int onlp_sfpi_dev_writew(onlp_oid_id_t id, int devaddr, int addr,
     int bus_id = -1;
     int ret = ONLP_STATUS_OK;
     int port_id;
-    //char command[255] = "";
 
     if (onlp_sfpi_is_present(id) != 1) {
         AIM_LOG_INFO("sfp module (port=%d) is absent.\n", local_id);
@@ -707,17 +716,20 @@ int onlp_sfpi_dev_writew(onlp_oid_id_t id, int devaddr, int addr,
     }
 
     devaddr = 0x50;
-    if (local_id < QSFP_PORT_NUM) { //QSFP
+    if (local_id < QSFP_PORT_NUM) {
+        /* QSFP */
         port_id = local_id;
         bus_id = qsfp_port_eeprom_bus_id_array[port_id];
         ret = onlp_i2c_writew(bus_id, devaddr, addr, value, ONLP_I2C_F_FORCE);
 
-    } else if (local_id >= QSFP_PORT_NUM && local_id < (QSFP_PORT_NUM + QSFPDD_PORT_NUM)) { //QSFPDD
+    } else if (local_id >= QSFP_PORT_NUM && local_id < (QSFP_PORT_NUM + QSFPDD_PORT_NUM)) {
+        /* QSFPDD */
         port_id = local_id - QSFP_PORT_NUM;
         bus_id = qsfpdd_port_eeprom_bus_id_array[port_id];
         ONLP_TRY(onlp_i2c_writew(bus_id, devaddr, addr, value, ONLP_I2C_F_FORCE));
 
-    } else if (local_id >= (QSFP_PORT_NUM + QSFPDD_PORT_NUM) && local_id < ALL_PORT_NUM) { //SFP
+    } else if (local_id >= (QSFP_PORT_NUM + QSFPDD_PORT_NUM) && local_id < ALL_PORT_NUM) {
+        /* SFP */
         return ONLP_STATUS_E_UNSUPPORTED;
 
     } else {
@@ -884,6 +896,8 @@ int onlp_sfpi_control_set(onlp_oid_id_t id, onlp_sfp_control_t control,
                 //do nothing
                 return ONLP_STATUS_OK;
             }
+            break;
+
         case ONLP_SFP_CONTROL_TX_DISABLE:
             if (port_type == ONLP_SFP_TYPE_SFP) {
                 /**
@@ -931,6 +945,8 @@ int onlp_sfpi_control_set(onlp_oid_id_t id, onlp_sfp_control_t control,
                 //do nothing
                 return ONLP_STATUS_OK;
             }
+            break;
+
         case ONLP_SFP_CONTROL_LP_MODE:
             if (port_type == ONLP_SFP_TYPE_QSFP28) {
                 /**
@@ -992,6 +1008,8 @@ int onlp_sfpi_control_set(onlp_oid_id_t id, onlp_sfp_control_t control,
                 //do nothing
                 return ONLP_STATUS_OK;
             }
+            break;
+
         default:
             //do nothing
             return ONLP_STATUS_OK;

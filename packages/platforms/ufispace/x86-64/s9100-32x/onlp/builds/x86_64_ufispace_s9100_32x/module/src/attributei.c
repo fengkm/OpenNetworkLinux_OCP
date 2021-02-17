@@ -1,5 +1,29 @@
+/************************************************************
+ * <bsn.cl fy=2017 v=onl>
+ *
+ *        Copyright 2017 Big Switch Networks, Inc.
+ *
+ * Licensed under the Eclipse Public License, Version 1.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ *        http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied. See the License for the specific
+ * language governing permissions and limitations under the
+ * License.
+ *
+ * </bsn.cl>
+ ************************************************************
+ *
+ * Attribute Implementation.
+ *
+ ***********************************************************/
 #include <unistd.h>
-#include <fcntl.h>
+//#include <fcntl.h>
 #include <linux/i2c-dev.h>
 
 #include <onlp/platformi/attributei.h>
@@ -54,12 +78,7 @@ typedef struct sysi_onie_vpd_s {
     char file[ONLP_CONFIG_INFO_STR_MAX*2];
 } sysi_onie_vpd_t;
 
-
 #define CMD_BIOS_VER  "dmidecode -s bios-version | tail -1 | tr -d '\r\n'"
-#define CMD_BMC_VER_1 "expr `ipmitool mc info | grep 'Firmware Revision' | cut -d':' -f2 | cut -d'.' -f1` + 0"
-#define CMD_BMC_VER_2 "expr `ipmitool mc info | grep 'Firmware Revision' | cut -d':' -f2 | cut -d'.' -f2` + 0"
-#define CMD_BMC_VER_3 "echo $((`ipmitool mc info | grep 'Aux Firmware Rev Info' -A 2 | sed -n '2p'`))"
-#define CMD_UCD_VER   "ipmitool raw 0x3c 0x08"
 
 static int _sysi_onie_product_name_get(char** product_name);
 static int _sysi_onie_part_number_get(char** part_number);
@@ -844,8 +863,7 @@ static int _sysi_onie_info_total_len_get(onlp_onie_info_t *onie, uint16_t *total
 
 
 
-const char*
-onlp_sysi_platform_get(void)
+const char* onlp_sysi_platform_get(void)
 {
     return "x86-64-ufispace-s9100-32x-r0";
 }
@@ -865,8 +883,7 @@ onlp_sysi_platform_get(void)
  * return UNSUPPORTED (which is all the default implementation does).
  *
  */
-int
-onlp_sysi_onie_data_phys_addr_get(void** pa)
+int onlp_sysi_onie_data_phys_addr_get(void** pa)
 {
     return ONLP_STATUS_E_UNSUPPORTED;
 }
@@ -879,8 +896,7 @@ onlp_sysi_onie_data_phys_addr_get(void** pa)
  * This function will be called as a backup in the event that
  * onlp_sysi_onie_data_phys_addr_get() fails.
  */
-int
-onlp_sysi_onie_data_get(uint8_t** data, int* size)
+int onlp_sysi_onie_data_get(uint8_t** data, int* size)
 {
 #if 0
     int ret;
@@ -970,6 +986,79 @@ static int __onlp_sysi_onie_info_get (onlp_onie_info_t *onie_info)
     return ret;
 }
 
+static int __asset_versions(onlp_oid_t oid, onlp_asset_info_t* asset_info)
+{
+    int ret = ONLP_STATUS_OK;
+    int cpld_version = 0;
+    char bios_out[32] = "";
+    int cpld_board_type = 0;
+    int board_build_rev = 0;
+    int board_hw_rev = 0;
+    int board_id = 0;
+    onlp_onie_info_t onie_info;
+
+    //Get CPLD Version
+    ret = file_read_hex(&cpld_version, "/sys/bus/i2c/devices/0-0033/cpld_version");
+    if (ret != ONLP_STATUS_OK) {
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (cpld_version < 0) {
+        AIM_LOG_ERROR("unable to read CPLD version\n");
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    asset_info->cpld_revision = aim_fstrdup("0x%02x\n", cpld_version);
+
+    //Get BIOS version 
+    if (exec_cmd(CMD_BIOS_VER, bios_out, sizeof(bios_out)) < 0) { 
+        AIM_LOG_ERROR("unable to read BIOS version\n");
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    //Get Board Type (Board Buld Rev, Board HW Rev, Boadr ID)
+    ret = file_read_hex(&cpld_board_type, "/sys/bus/i2c/devices/0-0033/cpld_board_type");
+    if (ret != ONLP_STATUS_OK) {
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (cpld_board_type < 0) {
+        AIM_LOG_ERROR("unable to read CPLD board type\n");
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    board_build_rev = ((cpld_board_type) & 0x03);
+    board_hw_rev = ((cpld_board_type) >> 2 & 0x03);
+    board_id = ((cpld_board_type) >> 4);
+
+
+    asset_info->firmware_revision = aim_fstrdup(
+            "\n"
+            "    [Board Type] 0x%x\n"
+            "    [Build Rev ] %d\n"
+            "    [HW Rev    ] %d\n"
+            "    [Board ID  ] %d\n"
+            "    [BIOS      ] %s\n",
+            cpld_board_type,
+            board_build_rev,
+            board_hw_rev,
+            board_id,
+            bios_out);
+
+
+    /* get platform info from onie syseeprom */
+    onlp_attributei_onie_info_get(oid, &onie_info);
+
+    asset_info->oid = oid;
+    ONIE_FIELD_CPY(asset_info, onie_info, manufacturer)
+    ONIE_FIELD_CPY(asset_info, onie_info, part_number)
+    ONIE_FIELD_CPY(asset_info, onie_info, serial_number)
+    ONIE_FIELD_CPY(asset_info, onie_info, manufacture_date)
+
+    return ONLP_STATUS_OK;
+}
+
+
 /**
  * @brief Initialize the attribute subsystem.
  */
@@ -1026,5 +1115,17 @@ int onlp_attributei_onie_info_get(onlp_oid_t oid, onlp_onie_info_t* onie_info)
  */
 int onlp_attributei_asset_info_get(onlp_oid_t oid, onlp_asset_info_t* asset_info)
 {
+    if(oid != ONLP_OID_CHASSIS) {
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }    
+
+    if(asset_info == NULL) {
+        return ONLP_STATUS_OK;
+    }    
+
+    asset_info->oid = oid; 
+
+    __asset_versions(oid, asset_info);
+
     return ONLP_STATUS_OK;
 }

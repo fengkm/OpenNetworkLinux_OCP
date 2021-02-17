@@ -20,7 +20,7 @@
  * </bsn.cl>
  ************************************************************
  *
- *
+ * Platform Lib
  *
  ***********************************************************/
 #include <errno.h>
@@ -349,8 +349,7 @@ int read_ioport(int addr, int *reg_val) {
     return ONLP_STATUS_OK;
 }
 
-int
-exec_cmd(char *cmd, char* out, int size) {
+int exec_cmd(char *cmd, char* out, int size) {
     FILE *fp;
 
     /* Open the command for reading. */
@@ -459,32 +458,31 @@ int file_vread_hex(int* value, const char* fmt, va_list vargs)
     return 0;
 }
 
+/**
+ * @brief get psu presnet status
+ * @param local_id: psu id
+ * @return:
+ *    0: absence
+ *    1: presence
+ *   <0: error code
+ */
 int get_psu_present_status(int local_id)
 {
-    int ret = ONLP_STATUS_OK;
-    int status;
-    int psu_index;
-    int mask;
-    int pw_present = 0;
+    int psu_reg_value = 0;
+    int psu_presence = 0;
 
     if (local_id == ONLP_PSU_0) {
-        mask = 0b01000000; //0x40
-        psu_index = 0;
+        ONLP_TRY(file_read_hex(&psu_reg_value, "/sys/bus/i2c/devices/1-0030/cpld_psu_status_0"));
+        psu_presence = (psu_reg_value & 0b01000000) ? 0 : 1;
     } else if (local_id == ONLP_PSU_1) {
-        mask = 0b10000000; //0x80
-        psu_index = 1;
+        ONLP_TRY(file_read_hex(&psu_reg_value, "/sys/bus/i2c/devices/1-0030/cpld_psu_status_1"));
+        psu_presence = (psu_reg_value & 0b10000000) ? 0 : 1;
     } else {
-        return ONLP_STATUS_E_INTERNAL;
-    }    
-    
-    ret = file_read_hex(&status, "/sys/bus/i2c/devices/1-0030/cpld_psu_status_%d", psu_index);
-    if (ret != ONLP_STATUS_OK) {
-        return ONLP_STATUS_E_INTERNAL;
+        AIM_LOG_ERROR("unknown psu id (%d), func=%s\n", local_id, __FUNCTION__);
+        return ONLP_STATUS_E_PARAM;
     }
 
-    pw_present = ((status & mask)? 0 : 1);
-
-    return pw_present;
+    return psu_presence;
 }
 
 /*

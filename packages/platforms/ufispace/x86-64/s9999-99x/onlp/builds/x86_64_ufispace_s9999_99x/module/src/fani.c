@@ -25,8 +25,8 @@
  ***********************************************************/
 #include <onlp/platformi/fani.h>
 #include <onlplib/file.h>
-#include <fcntl.h>
-#include <unistd.h>
+//#include <fcntl.h>
+//#include <unistd.h>
 #include "platform_lib.h"
 
 /**

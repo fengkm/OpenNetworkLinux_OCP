@@ -20,15 +20,15 @@
  * </bsn.cl>
  ************************************************************
  *
- *
+ * LED Implementation
  *
  ***********************************************************/
-#include <onlp/platformi/ledi.h>
-#include <onlplib/file.h>
-#include <sys/mman.h>
 #include <stdio.h>
 #include <string.h>
-#include <fcntl.h>
+#include <onlp/platformi/ledi.h>
+#include <onlplib/file.h>
+//#include <sys/mman.h>
+//#include <fcntl.h>
 
 #include "platform_lib.h"
 

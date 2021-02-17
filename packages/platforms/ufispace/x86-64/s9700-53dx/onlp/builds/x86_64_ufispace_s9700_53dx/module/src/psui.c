@@ -20,7 +20,7 @@
  * </bsn.cl>
  ************************************************************
  *
- *
+ * PSU
  *
  ***********************************************************/
 #include <stdio.h>
@@ -32,21 +32,26 @@
 
 #include "platform_lib.h"
 
-#define PSU_STATUS_PRESENT      1
-#define PSU_STATUS_POWER_GOOD   1
-
 #define CMD_FRU_INFO_GET        "ipmitool fru print %d | grep '%s' | cut -d':' -f2 | awk '{$1=$1};1' | tr -d '\n'"
 
 
-/*
+/**
  * Get all information about the given PSU oid.
+ *
+ *            |----[01] ONLP_PSU_0----[07] ONLP_THERMAL_PSU0
+ *            |                  |----[05] ONLP_PSU0_FAN_1
+ *            |                  |----[06] ONLP_PSU0_FAN_2
+ *            |
+ *            |----[02] ONLP_PSU_1----[08] ONLP_THERMAL_PSU1
+ *            |                  |----[07] ONLP_PSU1_FAN_1
+ *            |                  |----[08] ONLP_PSU1_FAN_2
  */
 static onlp_psu_info_t __onlp_psu_info[ONLP_PSU_COUNT] = {
     { }, /* Not used */
     {
         .hdr = {
             .id = ONLP_PSU_ID_CREATE(ONLP_PSU_0),
-            .description = "PSU-1",
+            .description = "PSU-0",
             .poid = ONLP_OID_CHASSIS,
             .coids = {
                 ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_PSU0),
@@ -63,7 +68,7 @@ static onlp_psu_info_t __onlp_psu_info[ONLP_PSU_COUNT] = {
     {
         .hdr = {
             .id = ONLP_PSU_ID_CREATE(ONLP_PSU_1),
-            .description = "PSU-2",
+            .description = "PSU-1",
             .poid = ONLP_OID_CHASSIS,
             .coids = {
                 ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_PSU1),
@@ -79,100 +84,74 @@ static onlp_psu_info_t __onlp_psu_info[ONLP_PSU_COUNT] = {
     }
 };
 
-static int ufi_psui_present_get(int local_id, int *pw_present)
+/**
+ * @brief get psu pwgood status
+ * @param local_id: psu id
+ * @return:
+ *    0: absence
+ *    1: presence
+ *   <0: error code
+ */
+static int get_psu_pwgood_status(int local_id)
 {
-    int ret = ONLP_STATUS_OK;
-    int status;
-    int psu_index;
-    int mask;
+    int psu_reg_value = 0;
+    int psu_pwgood = 0;
 
     if (local_id == ONLP_PSU_0) {
-        mask = 0b01000000; //0x40
-        psu_index = 0;
+        ONLP_TRY(file_read_hex(&psu_reg_value, "/sys/bus/i2c/devices/1-0030/cpld_psu_status_0"));
+        psu_pwgood = (psu_reg_value & 0b00010000) ? 1 : 0;
     } else if (local_id == ONLP_PSU_1) {
-        mask = 0b10000000; //0x80
-        psu_index = 1;
+        ONLP_TRY(file_read_hex(&psu_reg_value, "/sys/bus/i2c/devices/1-0030/cpld_psu_status_1"));
+        psu_pwgood = (psu_reg_value & 0b00100000) ? 1 : 0;
     } else {
-        return ONLP_STATUS_E_INTERNAL;
-    }    
-    
-    ret = file_read_hex(&status, "/sys/bus/i2c/devices/1-0030/cpld_psu_status_%d", psu_index);
-    if (ret != ONLP_STATUS_OK) {
-        return ONLP_STATUS_E_INTERNAL;
-    }
+        AIM_LOG_ERROR("unknown psu id (%d), func=%s\n", local_id, __FUNCTION__);
+        return ONLP_STATUS_E_PARAM;
+    }   
 
-    *pw_present = ((status & mask)? 0 : 1);
-
-    return ONLP_STATUS_OK;
+    return psu_pwgood;
 }
 
-static int ufi_psui_pwgood_get(int local_id, int *pw_good)
-{
-    int ret = ONLP_STATUS_OK;
-    int status;
-    int psu_index;
-    int mask;
+/**
+ * @brief Update the status of PSU's oid header.
+ * @param id The PSU ID.
+ * @param[out] hdr Receives the header.
+ */
+static int update_psui_status(int local_id, onlp_oid_hdr_t* hdr) {
+    int psu_presence = 0, psu_pwgood = 0;
 
-    if (local_id == ONLP_PSU_0) {
-        mask = 0b00010000; //0x10
-        psu_index=0;
-    } else if (local_id == ONLP_PSU_1) {
-        mask = 0b00100000; //0x20
-        psu_index=1;
-    } else {
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    ret = file_read_hex(&status, "/sys/bus/i2c/devices/1-0030/cpld_psu_status_%d", psu_index);
-    if (ret != ONLP_STATUS_OK) {
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    *pw_good = ((status & mask)? 1 : 0);
-
-    return ONLP_STATUS_OK;
-}
-
-static int ufi_psui_status_get(int local_id, onlp_oid_hdr_t* hdr)
-{
-    int ret = ONLP_STATUS_OK;
-    int pw_present, pw_good;
-
-    /* Get power present status */
-    ret = ufi_psui_present_get(local_id, &pw_present);
-    if (ret != ONLP_STATUS_OK) {
-        return ONLP_STATUS_E_INTERNAL;
-    } 
-
+    /* clear psui status */
     hdr->status = 0;
-    if (pw_present != PSU_STATUS_PRESENT) {
-        //hdr->status &= ~ONLP_OID_STATUS_FLAG_PRESENT;
-        //hdr->status |=  ONLP_OID_STATUS_FLAG_UNPLUGGED;
+
+    /* get psu present status */
+    psu_presence = get_psu_present_status(local_id);
+    if (psu_presence == 0) {
         ONLP_OID_STATUS_FLAG_SET(hdr, UNPLUGGED);
-        return ONLP_STATUS_OK;
-    }
-
-    //hdr->status |= ONLP_OID_STATUS_FLAG_PRESENT;
-    ONLP_OID_STATUS_FLAG_SET(hdr, PRESENT);
-
-    /* Get power good status */
-    ret = ufi_psui_pwgood_get(local_id, &pw_good);
-    if (ret != ONLP_STATUS_OK) {
-        return ONLP_STATUS_E_INTERNAL;
-    }                                 
-
-    if (pw_good != PSU_STATUS_POWER_GOOD) {
-        //hdr->status |= ONLP_OID_STATUS_FLAG_FAILED;
-        ONLP_OID_STATUS_FLAG_SET(hdr, FAILED);
+    } else if (psu_presence == 1) {
+        ONLP_OID_STATUS_FLAG_SET(hdr, PRESENT);
     } else {
-        //hdr->status &= ~ONLP_OID_STATUS_FLAG_FAILED;
+        return ONLP_STATUS_E_INTERNAL;
+    }   
+
+    /* get psu power good status */
+    psu_pwgood = get_psu_pwgood_status(local_id);
+    if (psu_pwgood == 0) {
+        ONLP_OID_STATUS_FLAG_SET(hdr, FAILED);
+    } else if (psu_pwgood == 1) {
         ONLP_OID_STATUS_FLAG_SET(hdr, OPERATIONAL);
+    } else {
+        return ONLP_STATUS_E_INTERNAL;
     }
 
     return ONLP_STATUS_OK;
 }
 
-static int ufi_psui_fru_get(int local_id, onlp_psu_info_t* info)
+
+/**
+ * @brief Update the information of Model and Serial from PSU EEPROM
+ * @param id The PSU Local ID
+ * @param[out] info Receives the PSU information (model and serial).
+ */
+static int update_psui_fru_info(int local_id, onlp_psu_info_t* info)
 {
     char cmd[100];
     char cmd_out[150];
@@ -225,7 +204,12 @@ static int ufi_psui_fru_get(int local_id, onlp_psu_info_t* info)
     return ONLP_STATUS_OK;
 }
 
-static int ufi_psui_psu_type_get(int local_id, onlp_psu_info_t* info)
+/**
+ * @brief Update the information of PSU Type from PSU Model (AC/DC)
+ * @param id The PSU Local ID
+ * @param[out] info Receives the PSU information (psu type).
+ */
+static int update_psui_psu_type(int local_id, onlp_psu_info_t* info)
 {
     int ret = ONLP_STATUS_OK;
 
@@ -240,7 +224,12 @@ static int ufi_psui_psu_type_get(int local_id, onlp_psu_info_t* info)
     return ret;
 }
 
-static int ufi_psui_info_get(int local_id, onlp_psu_info_t* info)
+/**
+ * @brief Update the information structure for the given PSU
+ * @param id The PSU Local ID
+ * @param[out] info Receives the PSU information.
+ */
+static int update_psui_info(int local_id, onlp_psu_info_t* info)
 {
     int ret = ONLP_STATUS_OK;
     int stbmvout, stbmiout;
@@ -319,14 +308,14 @@ static int ufi_psui_info_get(int local_id, onlp_psu_info_t* info)
     info->mpout = (info->miout * info->mvout + stbmiout * stbmvout) / 1000;
     //info->caps |= ONLP_PSU_CAPS_GET_PIN | ONLP_PSU_CAPS_GET_POUT;
 
-    /* Get FRU (model/serial) */
-    ret = ufi_psui_fru_get(local_id, info);
+    /* Update FRU (model/serial) */
+    ret = update_psui_fru_info(local_id, info);
     if (ret != ONLP_STATUS_OK) {
         return ONLP_STATUS_E_INTERNAL;
     }
 
     /* Update PSU Type AC/DC */
-    ret = ufi_psui_psu_type_get(local_id, info);
+    ret = update_psui_psu_type(local_id, info);
     if (ret != ONLP_STATUS_OK) {
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -385,7 +374,7 @@ int onlp_psui_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr)
     *hdr = __onlp_psu_info[local_id].hdr;
 
     /* Update onlp_oid_hdr_t */
-    ret = ufi_psui_status_get(local_id, hdr);
+    ret = update_psui_status(local_id, hdr);
 
     return ret;
 }
@@ -405,14 +394,10 @@ int onlp_psui_info_get(onlp_oid_id_t id, onlp_psu_info_t* info)
     *info = __onlp_psu_info[local_id];
     ONLP_TRY(onlp_psui_hdr_get(id, &info->hdr));
 
-    switch (local_id) {
-        case ONLP_PSU_0:
-        case ONLP_PSU_1:
-            ret = ufi_psui_info_get(local_id, info);
-            break;
-        default:
-            return ONLP_STATUS_E_INTERNAL;
-            break;
+    if (local_id == ONLP_PSU_0 || ONLP_PSU_1) {
+        ret = update_psui_info(local_id, info);
+    } else {
+        return ONLP_STATUS_E_PARAM;
     }   
 
     return ret;

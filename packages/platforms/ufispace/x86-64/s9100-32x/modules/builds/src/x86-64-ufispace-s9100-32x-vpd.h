@@ -9,8 +9,8 @@
 #define VPD_LICENSE    "GPL"
 
 #define VPD_ENTRY_SIZE        (17)
-#define VPD_I2C_BUS           (0)
-#define VPD_I2C_ADDR          (0x57)
+#define VPD_I2C_BUS           (9)
+#define VPD_I2C_ADDR          (0x54)
 
 struct register_attr {
 struct device_attribute *attr;

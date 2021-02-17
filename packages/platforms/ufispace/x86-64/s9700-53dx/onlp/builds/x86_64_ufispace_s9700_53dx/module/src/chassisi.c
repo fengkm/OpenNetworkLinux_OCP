@@ -1,6 +1,67 @@
+/************************************************************
+ * <bsn.cl fy=2014 v=onl>
+ *
+ *        Copyright 2014, 2015 Big Switch Networks, Inc.
+ *
+ * Licensed under the Eclipse Public License, Version 1.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ *        http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied. See the License for the specific
+ * language governing permissions and limitations under the
+ * License.
+ *
+ * </bsn.cl>
+ ************************************************************
+ *
+ * Chassis Implementation.
+ *
+ ***********************************************************/
 #include <onlp/platformi/chassisi.h>
 #include "platform_lib.h"
 
+
+/* This is definitions for x86-64-ufispace-s9700-53dx*/
+/* OID map*/
+/*
+ * [01] CHASSIS----[01] ONLP_THERMAL_CPU_PECI
+ *            |----[02] ONLP_THERMAL_OP2_ENV
+ *            |----[03] ONLP_THERMAL_J2_ENV_1
+ *            |----[04] ONLP_THERMAL_J2_DIE_1
+ *            |----[05] ONLP_THERMAL_J2_ENV_2
+ *            |----[06] ONLP_THERMAL_J2_DIE_2
+ *            |----[09] ONLP_THERMAL_CPU_PKG
+ *            |----[10] ONLP_THERMAL_CPU1
+ *            |----[11] ONLP_THERMAL_CPU2
+ *            |----[12] ONLP_THERMAL_CPU3
+ *            |----[13] ONLP_THERMAL_CPU4
+ *            |----[14] ONLP_THERMAL_CPU5
+ *            |----[15] ONLP_THERMAL_CPU6
+ *            |----[16] ONLP_THERMAL_CPU7
+ *            |----[17] ONLP_THERMAL_CPU8
+ *            |----[18] ONLP_THERMAL_CPU_BOARD
+ *            |----[01] ONLP_FAN_1
+ *            |----[02] ONLP_FAN_2
+ *            |----[03] ONLP_FAN_3
+ *            |----[04] ONLP_FAN_4
+ *            |----[01] ONLP_PSU_0----[07] ONLP_THERMAL_PSU0
+ *            |                  |----[05] ONLP_PSU0_FAN_1
+ *            |                  |----[06] ONLP_PSU0_FAN_2
+ *            |
+ *            |----[02] ONLP_PSU_1----[08] ONLP_THERMAL_PSU1
+ *            |                  |----[07] ONLP_PSU1_FAN_1
+ *            |                  |----[08] ONLP_PSU1_FAN_2
+ *            |
+ *            |----[01] ONLP_LED_SYSTEM
+ *            |----[02] ONLP_LED_PSU0
+ *            |----[03] ONLP_LED_PSU1
+ *            |----[04] ONLP_LED_FAN
+ */
 static onlp_oid_t __oid_info[] = {
     ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_CPU_PECI),
     ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_OP2_ENV),

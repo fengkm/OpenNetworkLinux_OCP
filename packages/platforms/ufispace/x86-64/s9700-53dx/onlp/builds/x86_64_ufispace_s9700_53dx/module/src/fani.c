@@ -25,12 +25,23 @@
  ***********************************************************/
 #include <onlp/platformi/fani.h>
 #include <onlplib/file.h>
-#include <fcntl.h>
-#include <unistd.h>
+//#include <fcntl.h>
+//#include <unistd.h>
 #include "platform_lib.h"
 
-/*
+/**
  * Get all information about the given FAN oid.
+ *
+ * [01] CHASSIS----[01] ONLP_FAN_1
+ *            |----[02] ONLP_FAN_2
+ *            |----[03] ONLP_FAN_3
+ *            |----[04] ONLP_FAN_4
+ *            |
+ *            |----[01] ONLP_PSU_0----[05] ONLP_PSU0_FAN_1
+ *            |                  |----[06] ONLP_PSU0_FAN_2
+ *            |
+ *            |----[02] ONLP_PSU_1----[07] ONLP_PSU1_FAN_1
+ *            |                  |----[08] ONLP_PSU1_FAN_2
  */
 static onlp_fan_info_t __onlp_fan_info[ONLP_FAN_COUNT] = { 
     { }, /* Not used */
@@ -132,13 +143,21 @@ static onlp_fan_info_t __onlp_fan_info[ONLP_FAN_COUNT] = {
     },
 };
 
-static int ufi_fani_status_get(int local_id, onlp_oid_hdr_t* hdr)
+/**
+ * @brief Update the status of FAN's oid header.
+ * @param id The FAN ID.
+ * @param[out] hdr Receives the header.
+ */
+static int update_fani_status(int local_id, onlp_oid_hdr_t* hdr)
 {
     int ret = ONLP_STATUS_OK;
-    int presence = 0;
+    int fan_presence = 0;
+    int psu_presence = 0;
     float data = 0;
 
+    /* clear FAN status */
     hdr->status = 0;
+
     if (local_id >= ONLP_FAN_1 && local_id <= ONLP_FAN_4) {
         hdr->status = 0;
         ret = bmc_sensor_read(local_id + 15, FAN_SENSOR, &data);
@@ -147,26 +166,30 @@ static int ufi_fani_status_get(int local_id, onlp_oid_hdr_t* hdr)
             return ret;
         }
 
-        presence = (int) data;
+        fan_presence = (int) data;
 
-        if( presence == 1 ) {
-            //hdr->status |= ONLP_FAN_STATUS_PRESENT;
+        if( fan_presence == 1 ) {
             ONLP_OID_STATUS_FLAG_SET(hdr, PRESENT);
         } else {
-            //hdr->status &= ~ONLP_FAN_STATUS_PRESENT;
             ONLP_OID_STATUS_FLAG_SET(hdr, UNPLUGGED);
         }
     } else if (local_id == ONLP_PSU0_FAN_1 || local_id <= ONLP_PSU0_FAN_2) {
-        if (get_psu_present_status(ONLP_PSU_0) == 1) {
+        psu_presence = get_psu_present_status(ONLP_PSU_0);
+        if (psu_presence == 0) {
+            ONLP_OID_STATUS_FLAG_SET(hdr, UNPLUGGED);
+        } else if (psu_presence == 1) {
             ONLP_OID_STATUS_FLAG_SET(hdr, PRESENT);
         } else {
-            ONLP_OID_STATUS_FLAG_SET(hdr, UNPLUGGED);
+            return ONLP_STATUS_E_INTERNAL;
         }
     } else if (local_id == ONLP_PSU1_FAN_1 || local_id <= ONLP_PSU1_FAN_2) {
-        if (get_psu_present_status(ONLP_PSU_1) == 1) {
+        psu_presence = get_psu_present_status(ONLP_PSU_1);
+        if (psu_presence == 0) {
+            ONLP_OID_STATUS_FLAG_SET(hdr, UNPLUGGED);
+        } else if (psu_presence == 1) {
             ONLP_OID_STATUS_FLAG_SET(hdr, PRESENT);
         } else {
-            ONLP_OID_STATUS_FLAG_SET(hdr, UNPLUGGED);
+            return ONLP_STATUS_E_INTERNAL;
         }
     } else {
         AIM_LOG_ERROR("unknown fan id (%d), func=%s\n", local_id, __FUNCTION__);
@@ -176,7 +199,12 @@ static int ufi_fani_status_get(int local_id, onlp_oid_hdr_t* hdr)
     return ONLP_STATUS_OK;    
 }
 
-static int ufi_fani_info_get(int local_id, onlp_fan_info_t* info) 
+/**
+ * @brief Update the information structure for the given FAN
+ * @param id The FAN Local ID
+ * @param[out] info Receives the FAN information.
+ */
+static int update_fani_info(int local_id, onlp_fan_info_t* info)
 {
     int ret = ONLP_STATUS_OK;
     int rpm = 0, percentage = 0;
@@ -220,7 +248,6 @@ static int ufi_fani_info_get(int local_id, onlp_fan_info_t* info)
     
     return ONLP_STATUS_OK;
 }
-
 
 /**
  * @brief Software initialization of the Fan module.
@@ -274,7 +301,7 @@ int onlp_fani_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr)
     *hdr = __onlp_fan_info[local_id].hdr;
 
     /* Update onlp_oid_hdr_t */
-    ret = ufi_fani_status_get(local_id, hdr);
+    ret = update_fani_status(local_id, hdr);
 
     return ret;
 }
@@ -294,20 +321,11 @@ int onlp_fani_info_get(onlp_oid_id_t id, onlp_fan_info_t* info)
     *info = __onlp_fan_info[local_id];
     ONLP_TRY(onlp_fani_hdr_get(id, &info->hdr));
 
-    switch (local_id) {
-        case ONLP_FAN_1:
-        case ONLP_FAN_2:
-        case ONLP_FAN_3:
-        case ONLP_FAN_4:
-        case ONLP_PSU0_FAN_1:
-        case ONLP_PSU0_FAN_2:
-        case ONLP_PSU1_FAN_1:
-        case ONLP_PSU1_FAN_2:
-            ret = ufi_fani_info_get(local_id, info);
-            break;
-        default:
-            return ONLP_STATUS_E_INTERNAL;
-            break;
+    if (local_id >= ONLP_FAN_1 && local_id <= ONLP_PSU1_FAN_2) {
+        ret = update_fani_info(local_id, info);
+    } else {
+        AIM_LOG_ERROR("unknown FAN id (%d), func=%s\n", local_id, __FUNCTION__);
+        ret = ONLP_STATUS_E_PARAM;
     }
 
     return ret;
