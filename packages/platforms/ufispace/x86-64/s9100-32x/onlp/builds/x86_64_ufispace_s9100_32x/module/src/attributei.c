@@ -932,48 +932,63 @@ static int __onlp_sysi_onie_info_get (onlp_onie_info_t *onie_info)
     if(ONLP_STATUS_OK == ret) {
         ret = _sysi_onie_part_number_get(&onie_info->part_number);
     }
+
     if(ONLP_STATUS_OK == ret) {
         ret = _sysi_onie_serial_number_get(&onie_info->serial_number);
     }
+
     if(ONLP_STATUS_OK == ret) {
         ret = _sysi_onie_mac_base_get(onie_info->mac);
     }
+
     if(ONLP_STATUS_OK == ret) {
         ret = _sysi_onie_manuf_date_get(&onie_info->manufacture_date);
     }
+
     if(ONLP_STATUS_OK == ret) {
         ret = _sysi_onie_device_version_get(&onie_info->device_version);
     }
+
     if(ONLP_STATUS_OK == ret) {
         ret = _sysi_onie_label_revision_get(&onie_info->label_revision);
     }
+
     if(ONLP_STATUS_OK == ret) {
         ret = _sysi_onie_platform_name_get(&onie_info->platform_name);
     }
+
     if(ONLP_STATUS_OK == ret) {
         ret = _sysi_onie_onie_version_get(&onie_info->onie_version);
     }
+
     if(ONLP_STATUS_OK == ret) {
         ret = _sysi_onie_mac_size_get(&onie_info->mac_range);
     }
+
     if(ONLP_STATUS_OK == ret) {
         ret = _sysi_onie_manuf_name_get(&onie_info->manufacturer);
     }
+
     if(ONLP_STATUS_OK == ret) {
         ret = _sysi_onie_manuf_country_get(&onie_info->country_code);
     }
+
     if(ONLP_STATUS_OK == ret) {
         ret = _sysi_onie_vendor_name_get(&onie_info->vendor);
     }
+
     if(ONLP_STATUS_OK == ret) {
         ret = _sysi_onie_diag_version_get(&onie_info->diag_version);
     }
+
     if(ONLP_STATUS_OK == ret) {
         ret = _sysi_onie_service_tag_get(&onie_info->service_tag);
     }
+
     if(ONLP_STATUS_OK == ret) {
         ret = _sysi_onie_vendor_ext_get(&onie_info->vx_list);
     }
+
     if(ONLP_STATUS_OK == ret) {
         ret = _sysi_onie_crc_32_get(&onie_info->crc);
     }

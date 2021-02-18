@@ -79,7 +79,7 @@ static onlp_psu_info_t __onlp_psu_info[ONLP_PSU_COUNT] = {
         .serial = "", 
         .caps = ONLP_PSU_CAPS_GET_VOUT | ONLP_PSU_CAPS_GET_IOUT | ONLP_PSU_CAPS_GET_PIN | ONLP_PSU_CAPS_GET_POUT,
         .type = ONLP_PSU_TYPE_AC,
-    }
+    },
 };
 
 /**

@@ -221,8 +221,8 @@ static int update_fani_info(int local_id, onlp_fan_info_t* info)
     }
 
     //only support for ONLP_FAN_1 to ONLP_FAN_8
-    if (local_id >= ONLP_PSU1_FAN_1) {
-        return ONLP_STATUS_E_UNSUPPORTED;
+    if (local_id == ONLP_PSU1_FAN_1 || local_id == ONLP_PSU2_FAN_1) {
+        return ONLP_STATUS_OK;
     }
 
     //get fan alarm
@@ -314,7 +314,7 @@ int onlp_fani_info_get(onlp_oid_id_t id, onlp_fan_info_t* info)
     if (local_id >= ONLP_FAN_1 && local_id <= ONLP_FAN_8) {
         ret = update_fani_info(local_id, info);
     } else if (local_id == ONLP_PSU1_FAN_1 || ONLP_PSU2_FAN_1) {
-        ret = ONLP_STATUS_E_UNSUPPORTED;
+        ret = ONLP_STATUS_OK;
     } else {
         AIM_LOG_ERROR("unknown FAN id (%d), func=%s\n", local_id, __FUNCTION__);
         ret = ONLP_STATUS_E_PARAM;

@@ -97,7 +97,7 @@ static onlp_led_info_t __onlp_led_info[ONLP_LED_COUNT] =
         .hdr = { 
             .id = ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY1),
             .description = "Rear LED 1 (FAN TRAY1 LED)",
-            .poid = ONLP_LED_ID_CREATE(ONLP_FAN_1),
+            .poid = ONLP_FAN_ID_CREATE(ONLP_FAN_1),
             .status = ONLP_OID_STATUS_FLAG_PRESENT,
         },  
         .caps = ONLP_LED_CAPS_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN,
@@ -107,7 +107,7 @@ static onlp_led_info_t __onlp_led_info[ONLP_LED_COUNT] =
         .hdr = { 
             .id = ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY2),
             .description = "Rear LED 2 (FAN TRAY2 LED)",
-            .poid = ONLP_LED_ID_CREATE(ONLP_FAN_3),
+            .poid = ONLP_FAN_ID_CREATE(ONLP_FAN_3),
             .status = ONLP_OID_STATUS_FLAG_PRESENT,
         },  
         .caps = ONLP_LED_CAPS_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN,
@@ -117,7 +117,7 @@ static onlp_led_info_t __onlp_led_info[ONLP_LED_COUNT] =
         .hdr = { 
             .id = ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY3),
             .description = "Rear LED 3 (FAN TRAY3 LED)",
-            .poid = ONLP_LED_ID_CREATE(ONLP_FAN_5),
+            .poid = ONLP_FAN_ID_CREATE(ONLP_FAN_5),
             .status = ONLP_OID_STATUS_FLAG_PRESENT,
         },  
         .caps = ONLP_LED_CAPS_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN,
@@ -127,7 +127,7 @@ static onlp_led_info_t __onlp_led_info[ONLP_LED_COUNT] =
         .hdr = { 
             .id = ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY4),
             .description = "Rear LED 4 (FAN TRAY4 LED)",
-            .poid = ONLP_LED_ID_CREATE(ONLP_FAN_7),
+            .poid = ONLP_FAN_ID_CREATE(ONLP_FAN_7),
             .status = ONLP_OID_STATUS_FLAG_PRESENT,
         },  
         .caps = ONLP_LED_CAPS_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN,
@@ -211,16 +211,21 @@ static int update_ledi_system_info(int local_id, onlp_led_info_t* info)
 static int update_ledi_psu_info(int local_id, onlp_led_info_t* info)
 {
     int ret = ONLP_STATUS_OK;
+    int psu_id = 0;
     int psu_presence = 0;
     int psu_pwgood = 0;
 
-    if (local_id != ONLP_LED_PSU1 && local_id != ONLP_LED_PSU2) {
+    if (local_id == ONLP_LED_PSU1) {
+        psu_id = ONLP_PSU_1; 
+    } else if (local_id == ONLP_LED_PSU2) {
+        psu_id = ONLP_PSU_2; 
+    } else {
         AIM_LOG_ERROR("incorrect parameter, id=%d, func=%s\n", local_id, __FUNCTION__);
         return ONLP_STATUS_E_PARAM;
     }
 
-    psu_presence = get_psu_present_status(local_id);
-    psu_pwgood = get_psu_pwgood_status(local_id);
+    psu_presence = get_psu_present_status(psu_id);
+    psu_pwgood = get_psu_pwgood_status(psu_id);
 
     if (psu_presence < 0 || psu_pwgood < 0) {
         return ONLP_STATUS_E_INTERNAL;

@@ -58,7 +58,7 @@ static onlp_thermal_info_t __onlp_thermal_info[] = {
     {
         .hdr = {
             .id = ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_FRONT_MAC),
-            .description = "Chassis Thermal (Front)",
+            .description = "Front MAC Thermal",
             .poid = ONLP_OID_CHASSIS,
             .status = ONLP_OID_STATUS_FLAG_PRESENT,
         },
@@ -69,7 +69,7 @@ static onlp_thermal_info_t __onlp_thermal_info[] = {
     {
         .hdr = {
             .id = ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_REAR_MAC),
-            .description = "Chassis Thermal (Rear)",
+            .description = "Rear MAC Thermal",
             .poid = ONLP_OID_CHASSIS,
             .status = ONLP_OID_STATUS_FLAG_PRESENT,
         },
@@ -125,7 +125,7 @@ static onlp_thermal_info_t __onlp_thermal_info[] = {
         .hdr = {
             .id = ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_PSU1_1),
             .description = "PSU-1 Thermal 1",
-            .poid = ONLP_PSU_1,
+            .poid = ONLP_PSU_ID_CREATE(ONLP_PSU_1),
             .status = ONLP_OID_STATUS_FLAG_PRESENT,
         },
         .caps = ONLP_THERMAL_CAPS_GET_TEMPERATURE,
@@ -135,7 +135,7 @@ static onlp_thermal_info_t __onlp_thermal_info[] = {
         .hdr = {
             .id = ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_PSU1_2),
             .description = "PSU-1 Thermal 2",
-            .poid = ONLP_PSU_1,
+            .poid = ONLP_PSU_ID_CREATE(ONLP_PSU_1),
             .status = ONLP_OID_STATUS_FLAG_PRESENT,
         },
         .caps = ONLP_THERMAL_CAPS_GET_TEMPERATURE,
@@ -145,7 +145,7 @@ static onlp_thermal_info_t __onlp_thermal_info[] = {
         .hdr = {
             .id = ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_PSU2_1),
             .description = "PSU-2 Thermal 1",
-            .poid = ONLP_PSU_2,
+            .poid = ONLP_PSU_ID_CREATE(ONLP_PSU_2),
             .status = ONLP_OID_STATUS_FLAG_PRESENT,
         },
         .caps = ONLP_THERMAL_CAPS_GET_TEMPERATURE,
@@ -155,7 +155,7 @@ static onlp_thermal_info_t __onlp_thermal_info[] = {
         .hdr = {
             .id = ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_PSU2_2),
             .description = "PSU-2 Thermal 2",
-            .poid = ONLP_PSU_2,
+            .poid = ONLP_PSU_ID_CREATE(ONLP_PSU_2),
             .status = ONLP_OID_STATUS_FLAG_PRESENT,
         },
         .caps = ONLP_THERMAL_CAPS_GET_TEMPERATURE,
@@ -178,6 +178,7 @@ static int update_thermali_mac_info(int local_id, onlp_thermal_info_t* info)
     } else if (local_id == ONLP_THERMAL_REAR_MAC) {
         ONLP_TRY(onlp_file_read_int(&temperature, "/sys/class/hwmon/hwmon1/device/temp2_input"));
     } else {
+        AIM_LOG_ERROR("unsupported thermal psu id (%d), func=%s\n", local_id, __FUNCTION__);
         return ONLP_STATUS_E_PARAM;
     }
     
@@ -205,6 +206,7 @@ static int update_thermali_cpu_info(int local_id, onlp_thermal_info_t* info)
     } else if (local_id == ONLP_THERMAL_CPU4) {
         ONLP_TRY(onlp_file_read_int(&temperature, "/sys/class/hwmon/hwmon0/device/hwmon/hwmon0/temp5_input"));
     } else {
+        AIM_LOG_ERROR("unsupported thermal psu id (%d), func=%s\n", local_id, __FUNCTION__);
         return ONLP_STATUS_E_PARAM;
     }
     
@@ -343,7 +345,7 @@ int onlp_thermali_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr)
         //do nothing, all thermals are present as default setting.
     }   
 
-    return ret;
+    return ONLP_STATUS_OK;
 }
 
 /*
@@ -366,6 +368,7 @@ int onlp_thermali_info_get(onlp_oid_id_t id, onlp_thermal_info_t* info)
 {
     int ret = ONLP_STATUS_OK;
     int local_id = ONLP_OID_ID_GET(id);
+    
     
     /* Set the onlp_thermal_info_t */
     memset(info, 0, sizeof(onlp_thermal_info_t));

@@ -130,7 +130,7 @@ static onlp_thermal_info_t __onlp_thermal_info[] = {
     },
     {
         .hdr = {
-            .id = ONLP_PSU_ID_CREATE(ONLP_THERMAL_PSU0),
+            .id = ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_PSU0),
             .description = "PSU 0 - Thermal Sensor 1",
             .poid = ONLP_PSU_ID_CREATE(ONLP_PSU_0),
             .status = ONLP_OID_STATUS_FLAG_PRESENT,
@@ -141,7 +141,7 @@ static onlp_thermal_info_t __onlp_thermal_info[] = {
     },
     {
         .hdr = {
-            .id = ONLP_PSU_ID_CREATE(ONLP_THERMAL_PSU1),
+            .id = ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_PSU1),
             .description = "PSU 1 - Thermal Sensor 1",
             .poid = ONLP_PSU_ID_CREATE(ONLP_PSU_1),
             .status = ONLP_OID_STATUS_FLAG_PRESENT,

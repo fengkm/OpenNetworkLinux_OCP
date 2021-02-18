@@ -58,7 +58,7 @@
  *            |----[03] ONLP_LED_PSU2
  *            |----[04] ONLP_LED_FAN
  */
-static onlp_oid_t __oid_info[] = { 
+static onlp_oid_t __onlp_oid_info[] = { 
     ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_FRONT_MAC),
     ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_REAR_MAC),
     ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_CPU1),
@@ -131,10 +131,10 @@ int onlp_chassisi_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* hdr)
     ONLP_OID_STATUS_FLAG_SET(hdr, PRESENT);
     ONLP_OID_STATUS_FLAG_SET(hdr, OPERATIONAL);
 
-    memcpy(hdr->coids, __oid_info, sizeof(__oid_info));
+    memcpy(hdr->coids, __onlp_oid_info, sizeof(__onlp_oid_info));
 
     /** Add 40 QSFP and 13 QSFPDD OIDs after the static table */
-    onlp_oid_t* e = hdr->coids + AIM_ARRAYSIZE(__oid_info);
+    onlp_oid_t* e = hdr->coids + AIM_ARRAYSIZE(__onlp_oid_info);
 
     /* 32 QSFP */
     for(i = 1; i <= 32; i++) {

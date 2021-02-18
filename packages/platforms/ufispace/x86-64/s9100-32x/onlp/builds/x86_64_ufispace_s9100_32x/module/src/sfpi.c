@@ -175,7 +175,14 @@ static int get_qsfp_port_reset_status(int local_id)
         port_id = local_id;
         ONLP_TRY(onlp_file_read_int(&port_reset, "/sys/class/gpio/gpio%d/value", 
                     qsfp_port_reset_gpio_index_array[port_id]));
-        port_reset = ~port_reset;
+        if (port_reset == 0) {
+            port_reset = 1;
+        } else if (port_reset == 1) {
+            port_reset = 0;
+        } else {
+            AIM_LOG_ERROR("unexpected value, port_reset=%d, func=%s\n", port_reset, __FUNCTION__);
+            return ONLP_STATUS_E_INTERNAL;
+        }
     } else { 
         /* unkonwn ports */
         AIM_LOG_ERROR("unknown ports, local_id=%d, func=%s\n", local_id, __FUNCTION__);
