@@ -54,7 +54,7 @@ class IPMI_Ioctl(object):
 
 class OnlPlatform_x86_64_ufispace_s9999_99x_r0(OnlPlatformUfiSpace):
     PLATFORM='x86-64-ufispace-s9999-99x-r0'
-    MODEL="S9999_99X"
+    MODEL="S9999-99X"
     SYS_OBJECT_ID=".9999.99"
     PORT_COUNT=99
     PORT_CONFIG="99x100 + 99x400"
