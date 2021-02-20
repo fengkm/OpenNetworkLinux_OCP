@@ -13,6 +13,10 @@
 #include "x86-64-ufispace-s9501-16smt-vpd.h"
 #include "x86-64-ufispace-s9501-16smt-onie-tlvinfo.h"
 
+#ifndef ENABLE_VPD_WRITE
+#define ENABLE_VPD_WRITE 0
+#endif
+
 static int vpd_major;
 static struct class *vpd_class_p = NULL;
 static char cEeprom[SYS_EEPROM_MAX_SIZE];
@@ -38,6 +42,7 @@ int get_vpd_data(struct i2c_client *pi2c_client, int i_offset, char *c_buf)
     return iRet;
 }
 
+#if ENABLE_VPD_WRITE
 static
 int write_vpd_data(struct i2c_client *pi2c_client, int i_offset, char *c_buf)
 {
@@ -60,6 +65,7 @@ int write_vpd_data(struct i2c_client *pi2c_client, int i_offset, char *c_buf)
     }
     return iErr;
 }
+#endif
 
 static struct device *
 get_swpdev_by_name(char *name){
@@ -70,6 +76,7 @@ get_swpdev_by_name(char *name){
     return dev;
 }
 
+#if ENABLE_VPD_WRITE
 static ssize_t
 store_attr_vpd(struct device *dev_p,
                       struct device_attribute *attr_p,
@@ -99,6 +106,7 @@ store_attr_vpd(struct device *dev_p,
 	mutex_unlock(&vpd_mutex);
 	return count;
 }
+#endif
 
 static ssize_t
 show_attr_vpd(struct device *dev_p,
@@ -127,6 +135,7 @@ show_attr_vpd(struct device *dev_p,
 
 /* ================= Vpd attribute ========================
  */
+#if ENABLE_VPD_WRITE
 static VPD_DEVICE_ATTR(product_name     ,S_IWUSR|S_IRUGO, show_attr_vpd, store_attr_vpd, TLV_CODE_PRODUCT_NAME  );
 static VPD_DEVICE_ATTR(part_number      ,S_IWUSR|S_IRUGO, show_attr_vpd, store_attr_vpd, TLV_CODE_PART_NUMBER );
 static VPD_DEVICE_ATTR(serial_number    ,S_IWUSR|S_IRUGO, show_attr_vpd, store_attr_vpd, TLV_CODE_SERIAL_NUMBER );
@@ -144,6 +153,25 @@ static VPD_DEVICE_ATTR(diag_version     ,S_IWUSR|S_IRUGO, show_attr_vpd, store_a
 static VPD_DEVICE_ATTR(service_tag      ,S_IWUSR|S_IRUGO, show_attr_vpd, store_attr_vpd, TLV_CODE_SERVICE_TAG  );
 static VPD_DEVICE_ATTR(vendor_ext       ,S_IWUSR|S_IRUGO, show_attr_vpd, store_attr_vpd, TLV_CODE_VENDOR_EXT  );
 static VPD_DEVICE_ATTR(crc32            ,S_IRUGO, show_attr_vpd, NULL, TLV_CODE_CRC_32  );
+#else
+static VPD_DEVICE_ATTR(product_name     ,S_IRUGO, show_attr_vpd, NULL, TLV_CODE_PRODUCT_NAME  );
+static VPD_DEVICE_ATTR(part_number      ,S_IRUGO, show_attr_vpd, NULL, TLV_CODE_PART_NUMBER );
+static VPD_DEVICE_ATTR(serial_number    ,S_IRUGO, show_attr_vpd, NULL, TLV_CODE_SERIAL_NUMBER );
+static VPD_DEVICE_ATTR(base_mac_address ,S_IRUGO, show_attr_vpd, NULL, TLV_CODE_MAC_BASE );
+static VPD_DEVICE_ATTR(manufacture_date ,S_IRUGO, show_attr_vpd, NULL, TLV_CODE_MANUF_DATE  );
+static VPD_DEVICE_ATTR(device_version   ,S_IRUGO, show_attr_vpd, NULL, TLV_CODE_DEVICE_VERSION );
+static VPD_DEVICE_ATTR(label_revision   ,S_IRUGO, show_attr_vpd, NULL, TLV_CODE_LABEL_REVISION );
+static VPD_DEVICE_ATTR(platform_name    ,S_IRUGO, show_attr_vpd, NULL, TLV_CODE_PLATFORM_NAME );
+static VPD_DEVICE_ATTR(onie_version     ,S_IRUGO, show_attr_vpd, NULL, TLV_CODE_ONIE_VERSION  );
+static VPD_DEVICE_ATTR(mac_addresses    ,S_IRUGO, show_attr_vpd, NULL, TLV_CODE_MAC_SIZE  );
+static VPD_DEVICE_ATTR(manufacturer     ,S_IRUGO, show_attr_vpd, NULL, TLV_CODE_MANUF_NAME  );
+static VPD_DEVICE_ATTR(country_code     ,S_IRUGO, show_attr_vpd, NULL, TLV_CODE_MANUF_COUNTRY  );
+static VPD_DEVICE_ATTR(vendor_name      ,S_IRUGO, show_attr_vpd, NULL, TLV_CODE_VENDOR_NAME  );
+static VPD_DEVICE_ATTR(diag_version     ,S_IRUGO, show_attr_vpd, NULL, TLV_CODE_DIAG_VERSION  );
+static VPD_DEVICE_ATTR(service_tag      ,S_IRUGO, show_attr_vpd, NULL, TLV_CODE_SERVICE_TAG  );
+static VPD_DEVICE_ATTR(vendor_ext       ,S_IRUGO, show_attr_vpd, NULL, TLV_CODE_VENDOR_EXT  );
+static VPD_DEVICE_ATTR(crc32            ,S_IRUGO, show_attr_vpd, NULL, TLV_CODE_CRC_32  );
+#endif
 
 static void
 clean_vpd_common(void)

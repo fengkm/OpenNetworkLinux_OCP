@@ -300,7 +300,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
                 } else {
                     reg_val = data_value & ~data_mask;
                 }
-                if ((rc = onlp_file_write_int(reg_val, "%x", sysfs_path)) != ONLP_STATUS_OK) {
+                if ((rc = onlp_file_write_int(reg_val, sysfs_path)) != ONLP_STATUS_OK) {
                     AIM_LOG_ERROR("Unable to write cpld_sfp_port_config, error=%d, sysfs=%s, reg_val=%x", rc, sysfs_path, reg_val);
                     return ONLP_STATUS_E_INTERNAL;
                 }

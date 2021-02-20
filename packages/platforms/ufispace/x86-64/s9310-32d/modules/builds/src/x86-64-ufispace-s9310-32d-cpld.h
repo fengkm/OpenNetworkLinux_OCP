@@ -1,6 +1,6 @@
 /* header file for i2c cpld driver of ufispace_s9310
  *
- * Copyright (C) 2017 Ingrasys Technology Corporation.
+ * Copyright (C) 2017 UfiSpace Technology Corporation.
  * Leo Lin <leo.yt.lin@ufispace.com>
  *
  * This program is free software; you can redistribute it and/or modify

@@ -45,8 +45,6 @@
 #define SYS_FAN_PREFIX              "/sys/class/hwmon/hwmon1/device/"
 #define SYS_EEPROM_PATH             "/sys/bus/i2c/devices/0-0057/eeprom"
 #define SYS_EEPROM_SIZE 512
-#define PSU1_EEPROM_PATH            "/sys/bus/i2c/devices/58-0050/eeprom"
-#define PSU2_EEPROM_PATH            "/sys/bus/i2c/devices/57-0050/eeprom"
 #define BMC_EN_FILE_PATH            "/etc/onl/bmc_en"
 #define BMC_SENSOR_CACHE            "/tmp/bmc_sensor_cache"
 #define MB_CPLD1_ID_PATH            "/sys/bus/i2c/devices/1-0030/cpld_id"
@@ -68,10 +66,14 @@
 #define MAX_SYS_FAN_NUM             8
 #define BOARD_THERMAL_NUM           6
 #define SYS_FAN_NUM                 8
-#define QSFP_NUM                    40
-#define QSFPDD_NUM                  13
+#define QSFP_NUM                    48
+#define QSFPX_NUM                   (QSFP_NUM+QSFPDD_NUM)
+#define QSFPDD_NUM                  0
 #define SFP_NUM                     2
-#define PORT_NUM                    55
+#define PORT_NUM                    (QSFP_NUM+QSFPDD_NUM+SFP_NUM)
+
+#define NAME_ETH_1                 "enp2s0f0"
+#define NAME_ETH_2                 "enp2s0f1"
 
 #define THERMAL_NUM                 21
 #define LED_NUM                     4
@@ -162,7 +164,7 @@
 #define LED_SYS_OFF_MASK        0x33
 
 /* SYS */
-#define CPLD_MAX                5
+#define CPLD_MAX                4
 //#define CPLD_BASE_ADDR          0x30
 #define CPLD_REG_VER            0x02
 extern const int CPLD_BASE_ADDR[CPLD_MAX];
@@ -206,9 +208,9 @@ typedef struct bmc_info_s
 /** led_oid */
 typedef enum led_oid_e {
     LED_OID_SYSTEM = ONLP_LED_ID_CREATE(1),    
-    LED_OID_PSU0 = ONLP_LED_ID_CREATE(2),
-    LED_OID_PSU1 = ONLP_LED_ID_CREATE(3),
-    LED_OID_FAN = ONLP_LED_ID_CREATE(4),
+    LED_OID_FAN = ONLP_LED_ID_CREATE(2),
+    LED_OID_PSU0 = ONLP_LED_ID_CREATE(3),
+    LED_OID_PSU1 = ONLP_LED_ID_CREATE(4),    
     LED_OID_FAN_TRAY1 = ONLP_LED_ID_CREATE(5),
     LED_OID_FAN_TRAY2 = ONLP_LED_ID_CREATE(6),
     LED_OID_FAN_TRAY3 = ONLP_LED_ID_CREATE(7),
@@ -218,9 +220,9 @@ typedef enum led_oid_e {
 /** led_id */
 typedef enum led_id_e {
     LED_ID_SYS_SYS = 1,    
-    LED_ID_SYS_PSU0 = 2,
-    LED_ID_SYS_PSU1 = 3,
-    LED_ID_SYS_FAN = 4,
+    LED_ID_SYS_FAN = 2,
+    LED_ID_SYS_PSU0 = 3,
+    LED_ID_SYS_PSU1 = 4,    
     LED_ID_FAN_TRAY1 = 5,
     LED_ID_FAN_TRAY2 = 6,
     LED_ID_FAN_TRAY3 = 7,

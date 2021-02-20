@@ -1,6 +1,6 @@
 /* header file for i2c cpld driver of ufispace_s9600_48x
  *
- * Copyright (C) 2017 Ingrasys Technology Corporation.
+ * Copyright (C) 2017 UfiSpace Technology Corporation.
  * Jason Tsai <jason.cy.tsai@ufispace.com>
  *
  * This program is free software; you can redistribute it and/or modify

@@ -3,7 +3,7 @@
 
 #define EEPROM_CLASS   "eeprom"
 #define VPD_DEVICE     "x86_64_ufispace_s9700_53dx_onie_syseeprom"
-#define VPD_AUTHOR     "UfiSpace <support@ufispace.com>"
+#define VPD_AUTHOR     "UfiSpace <feng.cf.lee@ufispace.com>"
 #define VPD_DESC       "UfiSpace eeprom vpd driver"
 #define VPD_VERSION    "1.0.0"
 #define VPD_LICENSE    "GPL"

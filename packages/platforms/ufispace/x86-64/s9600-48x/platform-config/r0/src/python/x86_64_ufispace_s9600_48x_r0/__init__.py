@@ -132,7 +132,7 @@ class OnlPlatform_x86_64_ufispace_s9600_48x_r0(OnlPlatformUfiSpace):
         )
 
         # init QSFP EEPROM
-        for port in range(25, 72):
+        for port in range(25, 73):
             self.new_i2c_device('sff8436', 0x50, port)
 
         # init Temperature

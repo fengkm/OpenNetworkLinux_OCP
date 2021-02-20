@@ -326,7 +326,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
     }
 
     // write reg val back
-    if ((rc = onlp_file_write_int(reg_val, "%x", sysfs)) 
+    if ((rc = onlp_file_write_int(reg_val, sysfs)) 
             != ONLP_STATUS_OK) {
         AIM_LOG_ERROR("Unable to write tx disable value, error=%d, \
                                     sysfs=%s, reg_val=%x", rc, sysfs, reg_val);

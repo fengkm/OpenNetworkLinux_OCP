@@ -41,40 +41,7 @@ bool bmc_enable = false;
 const char*
 onlp_sysi_platform_get(void)
 {
-    int mb_cpld1_addr = 0x700;
-    int mb_cpld1_board_type_rev;
-    int mb_cpld1_hw_rev, mb_cpld1_build_rev;
-
-    if (read_ioport(mb_cpld1_addr, &mb_cpld1_board_type_rev) < 0) {
-        AIM_LOG_ERROR("unable to read MB CPLD1 Board Type Revision\n");
-        return "x86-64-ufispace-s9600-48x-rx";
-    }
-    mb_cpld1_hw_rev = (((mb_cpld1_board_type_rev) >> 2 & 0x03));
-    mb_cpld1_build_rev = (((mb_cpld1_board_type_rev) & 0x03) | ((mb_cpld1_board_type_rev) >> 5 & 0x04));
-
-    if (mb_cpld1_hw_rev == 0 && mb_cpld1_build_rev == 0) {
-        return "x86-64-ufispace-s9600-48x-r0";
-    } else if (mb_cpld1_hw_rev == 1 && mb_cpld1_build_rev == 0) {
-        return "x86-64-ufispace-s9600-48x-r1";
-    } else if (mb_cpld1_hw_rev == 1 && mb_cpld1_build_rev == 1) {
-        return "x86-64-ufispace-s9600-48x-r2";
-    } else if (mb_cpld1_hw_rev == 1 && mb_cpld1_build_rev == 2) {
-        return "x86-64-ufispace-s9600-48x-r3";
-    } else if (mb_cpld1_hw_rev == 2 && mb_cpld1_build_rev == 1) {
-        return "x86-64-ufispace-s9600-48x-r4";
-    } else if (mb_cpld1_hw_rev == 2 && mb_cpld1_build_rev == 2) {
-        return "x86-64-ufispace-s9600-48x-r5";
-    } else if (mb_cpld1_hw_rev == 2 && mb_cpld1_build_rev == 3) {
-        return "x86-64-ufispace-s9600-48x-r6";
-    } else if (mb_cpld1_hw_rev == 3 && mb_cpld1_build_rev == 0) {
-        return "x86-64-ufispace-s9600-48x-r7";
-    } else if (mb_cpld1_hw_rev == 3 && mb_cpld1_build_rev == 1) {
-        return "x86-64-ufispace-s9600-48x-r8";
-    } else if (mb_cpld1_hw_rev == 3 && mb_cpld1_build_rev == 2) {
-        return "x86-64-ufispace-s9600-48x-r9";
-    } else {        
-        return "x86-64-ufispace-s9600-48x-r9";
-    }
+    return "x86-64-ufispace-s9600-48x-r0";
 }
 
 int
@@ -173,9 +140,9 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
         //*e++ = THERMAL_OID_CPU_BOARD;
         
         *e++ = LED_OID_SYSTEM;        
+        *e++ = LED_OID_FAN;
         *e++ = LED_OID_PSU0;
         *e++ = LED_OID_PSU1;
-        *e++ = LED_OID_FAN;
 	
         *e++ = PSU_OID_PSU0;
         *e++ = PSU_OID_PSU1;

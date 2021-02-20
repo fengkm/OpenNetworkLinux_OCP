@@ -53,11 +53,11 @@ static onlp_thermal_info_t thermal_info[] = {
                 ONLP_THERMAL_STATUS_PRESENT,
                 ONLP_THERMAL_CAPS_ALL, 0, {100000, 105000, 110000}
     },
-    { { THERMAL_OID_PSU0, "PSU 1 - Thermal Sensor 1", 0},
+    { { THERMAL_OID_PSU0, "PSU 0 - Thermal Sensor 1", 0},
                 ONLP_THERMAL_STATUS_PRESENT,
                 ONLP_THERMAL_CAPS_ALL, 0, {65000, 70000, 75000}
     },
-    { { THERMAL_OID_PSU1, "PSU 2 - Thermal Sensor 1", 0},
+    { { THERMAL_OID_PSU1, "PSU 1 - Thermal Sensor 1", 0},
                 ONLP_THERMAL_STATUS_PRESENT,
                 ONLP_THERMAL_CAPS_ALL, 0, {65000, 70000, 75000}
     },
