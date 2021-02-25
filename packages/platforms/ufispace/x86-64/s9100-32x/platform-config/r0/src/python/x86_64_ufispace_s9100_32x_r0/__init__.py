@@ -12,7 +12,7 @@ class OnlPlatform_x86_64_ufispace_s9100_32x_r0(OnlPlatformUfiSpace):
     def baseconfig(self):
                 
         os.system("modprobe i2c_ismt")
-        self.insmod("eeprom_mb")
+        self.insmod("x86-64-ufispace-eeprom-mb")
         os.system("modprobe w83795")
         os.system("modprobe eeprom")
         os.system("modprobe gpio_pca953x")
