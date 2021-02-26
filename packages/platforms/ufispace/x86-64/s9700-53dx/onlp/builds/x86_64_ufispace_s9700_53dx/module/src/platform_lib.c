@@ -216,7 +216,7 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
 {
     struct timeval new_tv;
     FILE *fp = NULL;
-    char ipmi_cmd[400] = {0};
+    char ipmi_cmd[500] = {0};
     char get_data_cmd[120] = {0};
     char buf[20];
     int rv = ONLP_STATUS_OK;
@@ -266,7 +266,7 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
     {
         ONLP_LOCK();
         if(bmc_cache_expired_check(file_last_time, bmc_cache_time, cache_time)) {
-            sprintf(ipmi_cmd, CMD_BMC_SENSOR_CACHE);
+            snprintf(ipmi_cmd, sizeof(ipmi_cmd), CMD_BMC_SENSOR_CACHE);
             system(ipmi_cmd);
         }
 
@@ -275,7 +275,7 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
             memset(buf, 0, sizeof(buf));
 
             if( dev_num >= 16 && dev_num <=19 ) {                
-                sprintf(get_data_cmd, CMD_BMC_CACHE_GET, bmc_cache[dev_num].name, 5);
+                snprintf(get_data_cmd, sizeof(get_data_cmd), CMD_BMC_CACHE_GET, bmc_cache[dev_num].name, 5);
                 fp = popen(get_data_cmd, "r");
                 if(fp != NULL)
                 {
@@ -291,7 +291,7 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
                 }
                 pclose(fp);
             } else {                
-                sprintf(get_data_cmd, CMD_BMC_CACHE_GET, bmc_cache[dev_num].name, 2);
+                sprintf(get_data_cmd, sizeof(get_data_cmd), CMD_BMC_CACHE_GET, bmc_cache[dev_num].name, 2);
                 
                 fp = popen(get_data_cmd, "r");
                 if(fp != NULL)
