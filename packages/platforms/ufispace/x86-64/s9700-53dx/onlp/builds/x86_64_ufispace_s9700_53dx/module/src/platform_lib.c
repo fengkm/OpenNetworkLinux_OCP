@@ -229,7 +229,7 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
 {
     struct timeval new_tv;
     FILE *fp = NULL;
-    char ipmi_cmd[400] = {0};
+    char ipmi_cmd[500] = {0};
     char get_data_cmd[120] = {0};
     char buf[20];
     int rv = ONLP_STATUS_OK;

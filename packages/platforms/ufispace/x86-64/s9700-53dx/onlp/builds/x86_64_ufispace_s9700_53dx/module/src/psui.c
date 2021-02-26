@@ -154,7 +154,7 @@ static int update_psui_status(int local_id, onlp_oid_hdr_t* hdr) {
 static int update_psui_fru_info(int local_id, onlp_psu_info_t* info)
 {
     char cmd[100];
-    char cmd_out[64];
+    char cmd_out[150];
     char fru_model[] = "Product Name";  //only Product Name can identify AC/DC
     char fru_serial[] = "Product Serial";
 
