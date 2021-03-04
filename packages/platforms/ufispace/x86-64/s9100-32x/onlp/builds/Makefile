@@ -1,2 +1,2 @@
-FILTER=x86_64_ufispace_s9100_32x
+FILTER=src
 include $(ONL)/make/subdirs.mk
