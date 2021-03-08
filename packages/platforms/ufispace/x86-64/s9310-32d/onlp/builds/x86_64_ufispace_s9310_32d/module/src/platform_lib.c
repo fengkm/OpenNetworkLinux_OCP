@@ -328,7 +328,7 @@ int
 psu_fru_get(onlp_psu_info_t* info, int id)
 {
     char cmd[100];
-    char cmd_out[150];
+    char cmd_out[64];
     char fru_model[] = "Product Name";  //only Product Name can identify AC/DC
     char fru_serial[] = "Product Serial";
 
@@ -374,7 +374,7 @@ psu_fru_get(onlp_psu_info_t* info, int id)
         return ONLP_STATUS_E_INTERNAL; 
     }
     
-    snprintf(info->serial, sizeof(info->model), "%s", cmd_out);
+    snprintf(info->serial, sizeof(info->serial), "%s", cmd_out);
     
     return ONLP_STATUS_OK;
 }

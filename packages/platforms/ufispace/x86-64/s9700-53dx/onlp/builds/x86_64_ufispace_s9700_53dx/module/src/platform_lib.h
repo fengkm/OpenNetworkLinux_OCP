@@ -20,7 +20,7 @@
  * </bsn.cl>
  ************************************************************
  *
- *
+ * Platform Library
  *
  ***********************************************************/
 #ifndef __PLATFORM_LIB_H__
@@ -36,11 +36,11 @@
 
 #include <x86_64_ufispace_s9700_53dx/x86_64_ufispace_s9700_53dx_config.h>
 #define SYS_DEV                     "/sys/bus/i2c/devices/"
-#define SYS_CPU_CORETEMP_PREFIX         "/sys/devices/platform/coretemp.0/hwmon/hwmon0/"
-#define SYS_CPU_CORETEMP_PREFIX2      "/sys/devices/platform/coretemp.0/"
+#define SYS_CPU_CORETEMP_PREFIX     "/sys/devices/platform/coretemp.0/hwmon/hwmon0/"
+#define SYS_CPU_CORETEMP_PREFIX2    "/sys/devices/platform/coretemp.0/"
 #define SYS_CORE_TEMP_PREFIX        "/sys/class/hwmon/hwmon2/"
 #define SYS_CPU_BOARD_TEMP_PREFIX   "/sys/bus/i2c/devices/0-004f/hwmon/hwmon1/"
-#define SYS_CPU_BOARD_TEMP_PREFIX2   "/sys/bus/i2c/devices/0-004f/"
+#define SYS_CPU_BOARD_TEMP_PREFIX2  "/sys/bus/i2c/devices/0-004f/"
 
 #define SYS_FAN_PREFIX              "/sys/class/hwmon/hwmon1/device/"
 #define SYS_EEPROM_PATH             "/sys/bus/i2c/devices/0-0057/eeprom"
@@ -105,7 +105,7 @@
 #define I2C_BUS_50              50      /* SYS LED */
 #define I2C_BUS_57              (57)      /* PSU2 */
 #define I2C_BUS_58              (58)      /* PSU1 */
-#define I2C_BUS_59              59      /* FRU  */
+#define I2C_BUS_59              59      /* FRU */
 
 #define I2C_BUS_PSU1            I2C_BUS_58      /* PSU1 */
 #define I2C_BUS_PSU2            I2C_BUS_57      /* PSU2 */

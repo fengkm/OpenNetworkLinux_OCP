@@ -19,7 +19,7 @@
  * </bsn.cl>
  ************************************************************
  *
- * Fan Platform Implementation Defaults.
+ * Fan Platform Implementation.
  *
  ***********************************************************/
 #include <onlp/platformi/fani.h>

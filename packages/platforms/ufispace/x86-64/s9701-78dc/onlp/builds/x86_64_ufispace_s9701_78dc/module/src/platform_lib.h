@@ -279,6 +279,7 @@ typedef struct port_type_info_s
 {
     port_type_t type;
     int port_index;
+    int eeprom_bus_index;
 }port_type_info_t;
 
 /* Shortcut for CPU thermal threshold value. */

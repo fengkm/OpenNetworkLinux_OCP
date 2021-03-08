@@ -20,7 +20,7 @@
  * </bsn.cl>
  ************************************************************
  *
- *
+ * Platform Library
  *
  ***********************************************************/
 #ifndef __PLATFORM_LIB_H__
@@ -105,7 +105,7 @@
 #define I2C_BUS_50              50      /* SYS LED */
 #define I2C_BUS_57              (57)      /* PSU2 */
 #define I2C_BUS_58              (58)      /* PSU1 */
-#define I2C_BUS_59              59      /* FRU  */
+#define I2C_BUS_59              59      /* FRU */
 
 #define I2C_BUS_PSU1            I2C_BUS_58      /* PSU1 */
 #define I2C_BUS_PSU2            I2C_BUS_57      /* PSU2 */

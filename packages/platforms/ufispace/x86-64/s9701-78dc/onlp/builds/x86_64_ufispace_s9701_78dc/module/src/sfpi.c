@@ -82,18 +82,26 @@ port_num_to_type(int port)
     if (port < SFP_NUM) { //SFP+
         port_type_info.type = TYPE_SFP;
         port_type_info.port_index = port;
+        port_type_info.eeprom_bus_index = port_type_info.port_index;
     } else if ((port >= SFP_NUM) && (port < (SFP_NUM+QSFP_NUM))) { //QSFP
         port_type_info.type = TYPE_QSFP;
         port_type_info.port_index = port - SFP_NUM;
+        if( (port_type_info.port_index >= 0) && (port_type_info.port_index <= 3)) { 
+            port_type_info.eeprom_bus_index = port_type_info.port_index;
+        } else {
+            port_type_info.eeprom_bus_index = port_type_info.port_index + 2;
+        }
     } else if ((port >= (SFP_NUM+QSFP_NUM)) && 
                     (port < (SFP_NUM+QSFP_NUM+QSFPDD_NUM))) { //QSFPDD
         port_type_info.type = TYPE_QSFPDD;
         port_type_info.port_index = port - SFP_NUM - QSFP_NUM;
+        port_type_info.eeprom_bus_index = port_type_info.port_index;
     } else if ((port >= (SFP_NUM+QSFP_NUM+QSFPDD_NUM)) && 
                     (port < (SFP_NUM+QSFP_NUM+QSFPDD_NUM+MGMT_SFP_NUM))) {
                     //MGMT SFP
         port_type_info.type = TYPE_MGMT_SFP;
-        port_type_info.port_index = port - SFP_NUM - QSFP_NUM - QSFPDD_NUM;;
+        port_type_info.port_index = port - SFP_NUM - QSFP_NUM - QSFPDD_NUM;
+        port_type_info.eeprom_bus_index = port_type_info.port_index;
     } else { //unkonwn ports
         AIM_LOG_ERROR("port_num mapping to type fail, port=%d\n", port);
         port_type_info.type = TYPE_UNNKOW;
@@ -178,7 +186,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 
     snprintf(eeprom_path, sizeof(eeprom_path), 
                 "/sys/bus/i2c/devices/%d-0050/eeprom", 
-                port_eeprom_bus_base[port_type_info.type]+port_type_info.port_index);
+                port_eeprom_bus_base[port_type_info.type]+port_type_info.eeprom_bus_index);
 
     if(onlp_file_read(data, 256, &size, eeprom_path) != ONLP_STATUS_OK) {
         AIM_LOG_ERROR("Unable to read eeprom for %s port(%d) sysfs: %s\r\n", 

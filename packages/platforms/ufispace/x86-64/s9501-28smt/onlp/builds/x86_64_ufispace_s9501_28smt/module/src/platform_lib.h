@@ -44,17 +44,19 @@
 
 #define BMC_EN_FILE_PATH            "/etc/onl/bmc_en"
 #define BMC_SENSOR_CACHE            "/tmp/bmc_sensor_cache"
+#define IPMITOOL_REDIRECT_FIRST_ERR " 2>/tmp/ipmitool_err_msg"
+#define IPMITOOL_REDIRECT_ERR       " 2>>/tmp/ipmitool_err_msg"
 
 #define CMD_BIOS_VER                "dmidecode -s bios-version | tail -1 | tr -d '\r\n'"
-#define CMD_BMC_VER_1               "expr `ipmitool mc info | grep 'Firmware Revision' | cut -d':' -f2 | cut -d'.' -f1` + 0"
-#define CMD_BMC_VER_2               "expr `ipmitool mc info | grep 'Firmware Revision' | cut -d':' -f2 | cut -d'.' -f2` + 0"
-#define CMD_BMC_VER_3               "echo $((`ipmitool mc info | grep 'Aux Firmware Rev Info' -A 2 | sed -n '2p'`))"
-#define CMD_BMC_SENSOR_CACHE        "ipmitool sdr -c get TEMP_MAC PSU0_TEMP1 PSU1_TEMP1 FAN_0 FAN_1 FAN_2 PSU0_FAN PSU1_FAN PSU0_VIN PSU0_VOUT PSU0_IIN PSU0_IOUT PSU0_STBVOUT PSU0_STBIOUT PSU1_VIN PSU1_VOUT PSU1_IIN PSU1_IOUT PSU1_STBVOUT PSU1_STBIOUT > "BMC_SENSOR_CACHE
-#define CMD_UCD_VER                 "ipmitool raw 0x3c 0x08 0x0"
-#define CMD_BMC_SDR_GET             "ipmitool sdr -c get %s"
-#define CMD_FRU_INFO_GET            "ipmitool fru print %d | grep '%s' | cut -d':' -f2 | awk '{$1=$1};1' | tr -d '\n'"
+#define CMD_BMC_VER_1               "expr `ipmitool mc info"IPMITOOL_REDIRECT_FIRST_ERR" | grep 'Firmware Revision' | cut -d':' -f2 | cut -d'.' -f1` + 0"
+#define CMD_BMC_VER_2               "expr `ipmitool mc info"IPMITOOL_REDIRECT_ERR" | grep 'Firmware Revision' | cut -d':' -f2 | cut -d'.' -f2` + 0"
+#define CMD_BMC_VER_3               "echo $((`ipmitool mc info"IPMITOOL_REDIRECT_ERR" | grep 'Aux Firmware Rev Info' -A 2 | sed -n '2p'`))"
+#define CMD_BMC_SENSOR_CACHE        "ipmitool sdr -c get TEMP_MAC PSU0_TEMP1 PSU1_TEMP1 FAN_0 FAN_1 FAN_2 PSU0_FAN PSU1_FAN PSU0_VIN PSU0_VOUT PSU0_IIN PSU0_IOUT PSU0_STBVOUT PSU0_STBIOUT PSU1_VIN PSU1_VOUT PSU1_IIN PSU1_IOUT PSU1_STBVOUT PSU1_STBIOUT > "BMC_SENSOR_CACHE IPMITOOL_REDIRECT_ERR
+#define CMD_UCD_VER                 "ipmitool raw 0x3c 0x08 0x0"IPMITOOL_REDIRECT_ERR
+#define CMD_BMC_SDR_GET             "ipmitool sdr -c get %s"IPMITOOL_REDIRECT_ERR
+#define CMD_FRU_INFO_GET            "ipmitool fru print %d"IPMITOOL_REDIRECT_ERR" | grep '%s' | cut -d':' -f2 | awk '{$1=$1};1' | tr -d '\n'"
 #define CMD_BMC_CACHE_GET           "cat "BMC_SENSOR_CACHE" | grep %s | awk -F',' '{print $%d}'"
-#define CMD_FRU_CACHE_SET           "ipmitool fru print %d | grep '%s' | cut -d':' -f2 | awk '{$1=$1};1' > %s"
+#define CMD_FRU_CACHE_SET           "ipmitool fru print %d "IPMITOOL_REDIRECT_ERR"| grep '%s' | cut -d':' -f2 | awk '{$1=$1};1' > %s"
 #define CMD_FRU_CACHE_GET           "cat %s | sed -n '%dp' | tr -d '\n'"
 
 #define PSU_STATUS_PRESENT          1

@@ -20,7 +20,7 @@
  * </bsn.cl>
  ************************************************************
  *
- *
+ * Platform Library
  *
  ***********************************************************/
 #include <errno.h>
@@ -170,13 +170,11 @@ int check_file_exist(char *file_path, long *file_time)
     if(stat(file_path, &file_info) == 0) {
         if(file_info.st_size == 0) {
             return 0;
-        }
-        else {
+        } else {
             *file_time = file_info.st_mtime;
             return 1;
         }
-    }
-    else {
+    } else {
        return 0;
     }
 }
@@ -212,7 +210,7 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
 {
     struct timeval new_tv;
     FILE *fp = NULL;
-    char ipmi_cmd[400] = {0};
+    char ipmi_cmd[1024] = {0};
     char get_data_cmd[120] = {0};
     char buf[20];
     int rv = ONLP_STATUS_OK;
@@ -224,7 +222,8 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
     long file_last_time = 0;
     static long bmc_cache_time = 0;    
     char* presence_str = "Present";
-    
+    int retry = 0, retry_max = 3;
+
     switch(sensor_type) {
         case FAN_SENSOR:
             cache_time = FAN_CACHE_TIME;
@@ -242,12 +241,10 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
         gettimeofday(&new_tv, NULL);
         if(bmc_cache_expired_check(file_last_time, new_tv.tv_sec, cache_time)) {
             bmc_cache_expired = 1;
-        }
-        else {
+        } else {
             bmc_cache_expired = 0;
         }
-    }
-    else {
+    } else {
         bmc_cache_expired = 1;
     }
 
@@ -262,16 +259,28 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
     {
         ONLP_LOCK();
         if(bmc_cache_expired_check(file_last_time, bmc_cache_time, cache_time)) {
-            sprintf(ipmi_cmd, CMD_BMC_SENSOR_CACHE);
-            system(ipmi_cmd);
+            snprintf(ipmi_cmd, sizeof(ipmi_cmd), CMD_BMC_SENSOR_CACHE);
+            for (retry = 0; retry < retry_max; ++retry) {
+                if ((rv=system(ipmi_cmd)) != ONLP_STATUS_OK) {
+                    if (retry == retry_max-1) {                        
+                        AIM_LOG_ERROR("%s() write bmc sensor cache failed, retry=%d, cmd=%s, ret=%d", 
+                            __func__, retry, ipmi_cmd, rv);
+                        return ONLP_STATUS_E_INTERNAL;
+                    } else {
+                        continue;
+                    }
+                } else {
+                    break;
+                }
+            }
         }
 
         for(dev_num = 0; dev_num < dev_size; dev_num++)
         {
             memset(buf, 0, sizeof(buf));
 
-            if( dev_num >= 15 && dev_num <=18 ) {                
-                sprintf(get_data_cmd, CMD_BMC_CACHE_GET, bmc_cache[dev_num].name, 5);
+            if( dev_num >= 15 && dev_num <=18 ) {
+                snprintf(get_data_cmd, sizeof(get_data_cmd), CMD_BMC_CACHE_GET, bmc_cache[dev_num].name, 5);
                 fp = popen(get_data_cmd, "r");
                 if(fp != NULL)
                 {
@@ -287,7 +296,7 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
                 }
                 pclose(fp);
             } else {                
-                sprintf(get_data_cmd, CMD_BMC_CACHE_GET, bmc_cache[dev_num].name, 2);
+                snprintf(get_data_cmd, sizeof(get_data_cmd), CMD_BMC_CACHE_GET, bmc_cache[dev_num].name, 2);
                 
                 fp = popen(get_data_cmd, "r");
                 if(fp != NULL)
@@ -644,7 +653,7 @@ int
 psu_fru_get(onlp_psu_info_t* info, int id)
 {
     char cmd[100];
-    char cmd_out[150];
+    char cmd_out[64];
     char fru_model[] = "Product Name";  //only Product Name can identify AC/DC
     char fru_serial[] = "Product Serial";
 
@@ -664,7 +673,7 @@ psu_fru_get(onlp_psu_info_t* info, int id)
 
     //Check output is correct    
     if (strnlen(cmd_out, sizeof(cmd_out))==0){
-        AIM_LOG_ERROR("unable to read fru info from BMC, fru id=%d, cmd=%s, out=%s\n", id, cmd, cmd_out);
+        AIM_LOG_ERROR("unable to read fru info from BMC, cmd_out is empty, fru id=%d, cmd=%s, out=%s\n", id, cmd, cmd_out);
         return ONLP_STATUS_E_INTERNAL; 
     }
     
@@ -686,11 +695,11 @@ psu_fru_get(onlp_psu_info_t* info, int id)
 
     //Check output is correct
     if (strnlen(cmd_out, sizeof(cmd_out))==0){
-        AIM_LOG_ERROR("unable to read fru info from BMC, fru id=%d, cmd=%s, out=%s\n", id, cmd, cmd_out);
+        AIM_LOG_ERROR("unable to read fru info from BMC, cmd_out is empty, fru id=%d, cmd=%s, out=%s\n", id, cmd, cmd_out);
         return ONLP_STATUS_E_INTERNAL; 
     }
     
-    snprintf(info->serial, sizeof(info->model), "%s", cmd_out);
+    snprintf(info->serial, sizeof(info->serial), "%s", cmd_out);
     
     return ONLP_STATUS_OK;
 }
@@ -823,7 +832,7 @@ fan_tray_led_set(onlp_oid_t id, onlp_led_mode_t mode)
 int read_ioport(int addr, int *reg_val) {
     int ret;
 
-    /*set r/w permission of all 65536 ports*/
+    /* set r/w permission of all 65536 ports */
     ret = iopl(3);
     if(ret < 0){
         AIM_LOG_ERROR("unable to read cpu cpld version, iopl enable error %d\n", ret);
@@ -831,7 +840,7 @@ int read_ioport(int addr, int *reg_val) {
     }
     *reg_val = inb(addr);
 
-    /*set r/w permission of  all 65536 ports*/
+    /* set r/w permission of  all 65536 ports */
     ret = iopl(0);
     if(ret < 0){
         AIM_LOG_ERROR("unable to read cpu cpld version, iopl disable error %d\n", ret);
@@ -1016,22 +1025,8 @@ sysi_platform_info_get(onlp_platform_info_t* pi)
 bool
 onlp_sysi_bmc_en_get(void)
 {
-//enable bmc by default
-#if 0
-    int value;
-
-    if (onlp_file_read_int(&value, BMC_EN_FILE_PATH) < 0) {
-        // flag file not exist, default to not enable
-        return false;
-    }
-
-    /* 1 - enable, 0 - no enable */
-    if ( value ) 
-        return true;
-
-    return false;
-#endif
-   return true;
+    //enable bmc by default
+    return true;
 }
 
 int
@@ -1088,82 +1083,6 @@ parse_bmc_sdr_cmd(char *cmd_out, int cmd_out_size,
     return ONLP_STATUS_OK;
 }
 
-#if 0
-int
-bmc_thermal_info_get(onlp_thermal_info_t* info, int id)
-{
-    int rc=0, i=0, token_idx=1, temp=0;
-
-    char cmd[48];
-    char cmd_out[150];
-    char* tokens[20];
-    char delimiter[]=",";
-
-    static int cache_rc[THERMAL_ID_MAX];
-    static int cache_cycle[THERMAL_ID_MAX];
-    static int cache_mcelsius[THERMAL_ID_MAX];
-    
-    memset(cmd, 0, sizeof(cmd));
-    memset(cmd_out, 0, sizeof(cmd_out));
-
-    ++cache_cycle[id];
-    cache_cycle[id] %= BMC_CACHE_CYCLE;
-    
-    if (cache_cycle[id] == 1) {
-        
-        snprintf(cmd, sizeof(cmd), CMD_BMC_SDR_GET, thermal_id_str[id]);
-        
-        //Get sensor info from BMC 
-        if (exec_cmd(cmd, cmd_out, sizeof(cmd_out)) < 0) {
-            AIM_LOG_ERROR("unable to read sensor info from BMC, sensor=%s\n", thermal_id_str[id]);
-            //write cache
-            cache_rc[id] = ONLP_STATUS_E_INTERNAL;
-            return ONLP_STATUS_E_INTERNAL; 
-        }
-
-        //Check output is correct
-        if (strnlen(cmd_out, sizeof(cmd_out))==0 ||
-            strchr(cmd_out, ',')==NULL ||
-            strstr(cmd_out, thermal_id_str[id])==NULL ){
-            AIM_LOG_ERROR("unable to read sensor info from BMC, sensor=%s, cmd=%s, out=%s\n", thermal_id_str[id], cmd, cmd_out);
-            //write cache
-            cache_rc[id] = ONLP_STATUS_E_INTERNAL;
-            return ONLP_STATUS_E_INTERNAL; 
-        }
-
-        //parse cmd_out to tokens
-        tokens[i++] = strtok(cmd_out, delimiter);
-        while (tokens[i-1] != NULL) {        
-            tokens[i++] = strtok(NULL, delimiter); 
-        }
-
-        //read temp field
-        if (i>=token_idx) {
-            temp = atoi(tokens[token_idx])*1000;
-            info->mcelsius = temp;
-            //write cache
-            cache_mcelsius[id] = info->mcelsius;            
-        } else {        
-            AIM_LOG_ERROR("unable to read sensor info from BMC, sensor=%s, cmd=%s, out=%s\n", thermal_id_str[id], cmd, cmd_out);
-            //write cache
-            cache_rc[id] = ONLP_STATUS_E_INTERNAL;                        
-            return ONLP_STATUS_E_INTERNAL;
-        }
-
-        //write cache
-        cache_rc[id] = ONLP_STATUS_OK;     
-        return ONLP_STATUS_OK;
-    } else {
-        
-        //read cache
-        rc = cache_rc[id];
-        info->mcelsius = cache_mcelsius[id];
-        
-        return rc;
-    }
-}
-#endif
-
 int
 bmc_thermal_info_get(onlp_thermal_info_t* info, int id)
 {
@@ -1179,135 +1098,6 @@ bmc_thermal_info_get(onlp_thermal_info_t* info, int id)
         
     return rc;    
 }
-
-#if 0
-int 
-bmc_fan_info_get(onlp_fan_info_t* info, int id)
-{
-    int rv=0, i=0, presence_token=4,rpm_token=1, rpm=0, percentage=0;
-    int sys_max_fan_speed = 16000;
-    int psu_max_fan1_speed = 28500;
-    int psu_max_fan2_speed = 26000;
-    int max_fan_speed = 0;
-    
-    char cmd_out[150];
-    char* tokens[BMC_TOKEN_SIZE];
-    char* presence_val;
-    char* presence_str = "Present";
-
-    static int cache_rv[FAN_ID_MAX];
-    static int cache_status[FAN_ID_MAX];
-    static int cache_action[FAN_ID_MAX];
-    static int cache_rpm[FAN_ID_MAX];
-    static int cache_cycle[FAN_ID_MAX];
-    static int cache_percentage[FAN_ID_MAX];
-    
-    ++cache_cycle[id];
-    cache_cycle[id] %= BMC_CACHE_CYCLE;
-    
-    //check presence for fantray 1-4
-    if (id >= FAN_ID_FAN1 && id <= FAN_ID_FAN4) {
-
-        if (cache_cycle[id] == 1) { 
-            if ( (rv=parse_bmc_sdr_cmd(cmd_out, sizeof(cmd_out), tokens, BMC_TOKEN_SIZE, fan_id_presence_str[id], &i)) != ONLP_STATUS_OK) {                
-                //write cache
-                cache_action[id] = 2;
-                cache_rv[id] = rv;
-                return rv;
-            }
-
-            //read presence field
-            if (i>=presence_token) {
-                presence_val = tokens[presence_token];
-                if( strstr(presence_val, presence_str) == NULL ) {                
-                    info->status &= ~ONLP_FAN_STATUS_PRESENT;                
-                    //write cache
-                    cache_action[id] = 1;
-                    cache_status[id] = info->status;
-                    return ONLP_STATUS_OK;
-                } else {
-                    info->status |= ONLP_FAN_STATUS_PRESENT;
-                    //write cache
-                    cache_action[id] = 0;
-                    cache_status[id] = info->status;
-                }
-            } else {                
-                AIM_LOG_ERROR("unable to read sensor info from BMC, sensor=%s, out=%s\n", fan_id_presence_str[id], cmd_out);
-                //write cache
-                cache_action[id] = 2;
-                cache_rv[id] = ONLP_STATUS_E_INTERNAL;
-                return ONLP_STATUS_E_INTERNAL;
-            }
-        } else {
-            //read cache
-            if (cache_action[id] == 0) {
-                info->status = cache_status[id];
-            } else if (cache_action[id] == 1) {
-                info->status |= cache_status[id];
-                return cache_rv[id];
-            } else if (cache_action[id] == 2) {            
-                return cache_rv[id];
-            }
-        }
-    } 
-
-    if (cache_cycle[id] == 1) {
-        
-        //get fan rpm
-        if ( (rv=parse_bmc_sdr_cmd(cmd_out, sizeof(cmd_out), tokens, BMC_TOKEN_SIZE, fan_id_str[id], &i)) != ONLP_STATUS_OK) {
-            //write cache
-            cache_action[id] = 1;
-            cache_rv[id] = rv;
-            return rv;
-        }
-
-        //set rpm field
-        if (i>=rpm_token) {
-            rpm = atoi(tokens[rpm_token]);
-            info->rpm = rpm;
-            //write cache
-            cache_action[id] = 0;
-            cache_rpm[id] = rpm;
-            
-            if (id >= FAN_ID_FAN1 && id <= FAN_ID_FAN4) {
-                percentage = (info->rpm*100)/sys_max_fan_speed; 
-                info->percentage = percentage; 
-                //cache                
-                cache_percentage[id] = info->percentage;
-            } else if (id >= FAN_ID_PSU0_FAN1 && id <= FAN_ID_PSU1_FAN2) {
-                if (id == FAN_ID_PSU0_FAN1 || id == FAN_ID_PSU1_FAN1 ) {
-                    max_fan_speed = psu_max_fan1_speed;
-                } else {
-                    max_fan_speed = psu_max_fan2_speed;
-                }    
-                percentage = (info->rpm*100)/max_fan_speed; 
-                info->percentage = percentage; 
-                //cache                
-                cache_percentage[id] = info->percentage;                
-            }
-            //write cache
-            cache_action[id] = 0;
-        } else {        
-            AIM_LOG_ERROR("unable to read sensor info from BMC, sensor=%s, out=%s\n", fan_id_str[id], cmd_out);
-            //write cache
-            cache_action[id] = 1;
-            cache_rv[id] = ONLP_STATUS_E_INTERNAL;
-            return ONLP_STATUS_E_INTERNAL;
-        }
-    } else {
-
-        //read cache
-        if (cache_action[id] == 0) {
-            info->rpm = cache_rpm[id];
-            info->percentage = cache_percentage[id];
-        } else if (cache_action[id] == 1) {            
-            return cache_rv[id];
-        } 
-    }
-    
-    return ONLP_STATUS_OK;
-}
-#endif
 
 int 
 bmc_fan_info_get(onlp_fan_info_t* info, int id)

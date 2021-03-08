@@ -19,7 +19,7 @@
  * </bsn.cl>
  ************************************************************
  *
- *
+ * ONLP System Platform Interface.
  *
  ***********************************************************/
 #include <onlp/platformi/sysi.h>
@@ -76,8 +76,6 @@ onlp_sysi_platform_get(void)
 int
 onlp_sysi_platform_set(const char* platform)
 {
-    //AIM_LOG_INFO("Set ONL platform interface to '%s'\n", platform);
-    //AIM_LOG_INFO("Real HW Platform: '%s'\n", onlp_sysi_platform_get());
     return ONLP_STATUS_OK;
 }
 

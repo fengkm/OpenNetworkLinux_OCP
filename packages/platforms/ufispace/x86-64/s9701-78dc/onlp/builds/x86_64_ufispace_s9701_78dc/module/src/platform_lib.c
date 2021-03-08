@@ -380,7 +380,7 @@ bmc_fru_read(onlp_psu_info_t* info, int fru_id)
         bmc_cache_expired = 1;
     }
 
-    if(bmc_fru_cache_time == 0 && check_file_exist(BMC_FRU_CACHE, &file_last_time)) {
+    if(bmc_fru_cache_time == 0 && check_file_exist(cache_file, &file_last_time)) {
         bmc_cache_expired = 1;
         gettimeofday(&new_tv,NULL);
         bmc_fru_cache_time = new_tv.tv_sec;

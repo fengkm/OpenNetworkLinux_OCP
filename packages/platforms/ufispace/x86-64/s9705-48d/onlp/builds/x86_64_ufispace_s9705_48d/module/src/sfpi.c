@@ -19,6 +19,7 @@
  * </bsn.cl>
  ************************************************************
  *
+ * SFP Platform Implementation Interface.
  *
  ***********************************************************/
 #include <sys/types.h>
@@ -149,12 +150,12 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
     int i=0, value=0, rc=0;
 
-    /* Populate bitmap - QSFPDD ports*/
+    /* Populate bitmap - QSFPDD ports */
     for(i = 0; i < QSFPDD_NUM; i++) {
         AIM_BITMAP_MOD(dst, i, 0);
     }
 
-    /* Populate bitmap - SFP+ ports*/
+    /* Populate bitmap - SFP+ ports */
     for(i = QSFPDD_NUM; i < PORT_NUM; i++) {
         if ((rc=onlp_sfpi_control_get(i, ONLP_SFP_CONTROL_RX_LOS, &value)) != ONLP_STATUS_OK) {
             return ONLP_STATUS_E_INTERNAL;
