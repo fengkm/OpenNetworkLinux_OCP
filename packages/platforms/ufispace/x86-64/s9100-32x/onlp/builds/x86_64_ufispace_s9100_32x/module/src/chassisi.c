@@ -133,7 +133,7 @@ int onlp_chassisi_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* hdr)
 
     memcpy(hdr->coids, __onlp_oid_info, sizeof(__onlp_oid_info));
 
-    /** Add 40 QSFP and 13 QSFPDD OIDs after the static table */
+    /* Add 32 QSFP OIDs after the static table */
     onlp_oid_t* e = hdr->coids + AIM_ARRAYSIZE(__onlp_oid_info);
 
     /* 32 QSFP */
