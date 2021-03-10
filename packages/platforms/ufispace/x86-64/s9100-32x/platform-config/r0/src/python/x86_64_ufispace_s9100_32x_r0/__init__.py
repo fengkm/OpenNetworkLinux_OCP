@@ -2,23 +2,34 @@ from onl.platform.base import *
 from onl.platform.ufispace import *
 import os
 
+def msg(s, fatal=False):
+    sys.stderr.write(s)
+    sys.stderr.flush()
+    if fatal:
+        sys.exit(1)
+
 class OnlPlatform_x86_64_ufispace_s9100_32x_r0(OnlPlatformUfiSpace):
     PLATFORM='x86-64-ufispace-s9100-32x-r0'
-    MODEL="s9100-32x"
-    SYS_OBJECT_ID=".8.1"
+    MODEL="S9100-32X"
+    SYS_OBJECT_ID=".9100.32"
     PORT_COUNT=32
     PORT_CONFIG="32x100"
     
     def baseconfig(self):
                 
+        os.system("modprobe -r gpio_ich")
         os.system("modprobe i2c_ismt")
         self.insmod("x86-64-ufispace-eeprom-mb")
+        self.insmod("x86-64-ufispace-s9100-32x-cpld")
         os.system("modprobe w83795")
+        os.system("modprobe jc42")
         os.system("modprobe eeprom")
         os.system("modprobe gpio_pca953x")
         self.insmod("optoe")
         
         ########### initialize I2C bus 1 ###########
+        os.system("echo ''")
+        os.system("echo '# initialize i2c mux...'")
         self.new_i2c_device('pca9548', 0x70, 1)
                    
         # initialize i2c
@@ -28,28 +39,62 @@ class OnlPlatform_x86_64_ufispace_s9100_32x_r0(OnlPlatformUfiSpace):
                 ('pca9548', 0x72, 3),
                 ('pca9548', 0x73, 4),
                 ('pca9548', 0x74, 5),
+                ('pca9546', 0x75, 8),
                 ]
-            )       
-    
+            )
+
+        #Init CPLD LED_CLR Register (Front Port LED)
+        os.system("echo ''")
+        os.system("echo '# initialize CPLD LED_CLR register (front port LED)...'")
+        os.system("i2cset -y 0 0x33 0x34 0x10");
+
+        # initialize temperature sensor
+        os.system("echo ''")
+        os.system("echo '# initialize temperature sensor...'");
+        os.system("i2cset -y -r -f 0 0x2F 0x00 0x80")
+        os.system("i2cset -y -r -f 0 0x2F 0x05 0x7F")
+        os.system("i2cset -y -r -f 0 0x2F 0x04 0x0A")
+
+        # initialize voltage monitor
+        os.system("echo ''")
+        os.system("echo '# initialize voltage monitor...'");
+        os.system("i2cset -y -r -f 0 0x2F 0x00 0x80")
+        os.system("i2cset -y -r -f 0 0x2F 0x02 0xFF")
+        os.system("i2cset -y -r -f 0 0x2F 0x03 0x50")
+        os.system("i2cset -y -r -f 0 0x2F 0x04 0x0A")
+
+        # initialize FAN speed
+        os.system("echo ''")
+        os.system("echo '# initialize FAN speed...'");
+        os.system("echo 120 > /sys/class/hwmon/hwmon1/device/pwm1")
+        os.system("echo 120 > /sys/class/hwmon/hwmon1/device/pwm2")
+
         # initialize SMBUS0 IO Expander
-        os.system("i2cset -y 0 0x27 4 0x00")
-        os.system("i2cset -y 0 0x27 5 0x00")
-        os.system("i2cset -y 0 0x27 2 0x00")
-        os.system("i2cset -y 0 0x27 3 0x00")
-        os.system("i2cset -y 0 0x27 6 0xFF")
-        os.system("i2cset -y 0 0x27 7 0xFF")
+        os.system("echo ''")
+        os.system("echo '# initialize SMBUS0 IO Expander...'");
+        os.system("i2cset -y -r 0 0x27 4 0x00")
+        os.system("i2cset -y -r 0 0x27 5 0x00")
+        os.system("i2cset -y -r 0 0x27 2 0x00")
+        os.system("i2cset -y -r 0 0x27 3 0x00")
+        os.system("i2cset -y -r 0 0x27 6 0xFF")
+        os.system("i2cset -y -r 0 0x27 7 0xFF")
         
         # initialize SMBUS1 ABS
-        os.system("i2cset -y 6 0x20 4 0x00")
-        os.system("i2cset -y 6 0x20 5 0x00")
-        os.system("i2cset -y 6 0x20 6 0xFF")
-        os.system("i2cset -y 6 0x20 7 0xFF")
+        os.system("echo ''")
+        os.system("echo '# initialize SMBUS1 ABS...'");
+        os.system("i2cset -y -r 6 0x20 4 0x00")
+        os.system("i2cset -y -r 6 0x20 5 0x00")
+        os.system("i2cset -y -r 6 0x20 6 0xFF")
+        os.system("i2cset -y -r 6 0x20 7 0xFF")
 
-        os.system("i2cset -y 6 0x21 4 0x00")
-        os.system("i2cset -y 6 0x21 5 0x00")
-        os.system("i2cset -y 6 0x21 6 0xFF")
-        os.system("i2cset -y 6 0x21 7 0xFF")
-        # initialize Transcevior INT
+        os.system("i2cset -y -r 6 0x21 4 0x00")
+        os.system("i2cset -y -r 6 0x21 5 0x00")
+        os.system("i2cset -y -r 6 0x21 6 0xFF")
+        os.system("i2cset -y -r 6 0x21 7 0xFF")
+
+        # initialize Transceiver INT
+        os.system("echo ''")
+        os.system("echo '# initialize transceiver INT'");
         os.system("i2cset -y -r 6 0x22 4 0x00")
         os.system("i2cset -y -r 6 0x22 5 0x00")
         os.system("i2cset -y -r 6 0x22 6 0xFF")
@@ -60,7 +105,9 @@ class OnlPlatform_x86_64_ufispace_s9100_32x_r0(OnlPlatformUfiSpace):
         os.system("i2cset -y -r 6 0x23 6 0xFF")
         os.system("i2cset -y -r 6 0x23 7 0xFF")
 
-         # initialize set ZQSFP LP_MODE = 0 
+        # initialize set ZQSFP LP_MODE = 0 
+        os.system("echo ''")
+        os.system("echo '# initialize set ZQSFP LP_MODE = 0...'");
         os.system("i2cset -y -r 7 0x20 4 0x00")
         os.system("i2cset -y -r 7 0x20 5 0x00")
         os.system("i2cset -y -r 7 0x20 2 0x00")
@@ -76,6 +123,8 @@ class OnlPlatform_x86_64_ufispace_s9100_32x_r0(OnlPlatformUfiSpace):
         os.system("i2cset -y -r 7 0x21 7 0x00")
 
         # initialize set ZQSFP RST = 1 
+        os.system("echo ''")
+        os.system("echo '# initialize set ZQSFP RST = 1...'");
         os.system("i2cset -y -r 7 0x22 4 0x00")
         os.system("i2cset -y -r 7 0x22 5 0x00")
         os.system("i2cset -y -r 7 0x22 2 0xFF")
@@ -91,6 +140,8 @@ class OnlPlatform_x86_64_ufispace_s9100_32x_r0(OnlPlatformUfiSpace):
         os.system("i2cset -y -r 7 0x23 7 0x00")
 
         # initialize set ZQSFP mode 
+        os.system("echo ''")
+        os.system("echo '# initialize set ZQSFP mode...'");
         os.system("i2cset -y -r 7 0x24 4 0x00")
         os.system("i2cset -y -r 7 0x24 5 0x00")
         os.system("i2cset -y -r 7 0x24 2 0x00")
@@ -106,18 +157,24 @@ class OnlPlatform_x86_64_ufispace_s9100_32x_r0(OnlPlatformUfiSpace):
         os.system("i2cset -y -r 7 0x25 7 0x00")
 
         # initialize ZQSFP/SFP+/E-Card General 
+        os.system("echo ''")
+        os.system("echo '# initialize ZQSFP/SFP+/E-Card General...'");
         os.system("i2cset -y -r 8 0x20 4 0x00")
         os.system("i2cset -y -r 8 0x20 5 0x00")
         os.system("i2cset -y -r 8 0x20 6 0xFF")
         os.system("i2cset -y -r 8 0x20 7 0xFF")
         
-        # initialize LED board after PVT (S9100_32X_IO_EXP_LED_ID)
+        # initialize LED board after PVT (S9100_IO_EXP_LED_ID)
+        os.system("echo ''")
+        os.system("echo '# initialize LED board...'");
         os.system("i2cset -y -r 9 0x22 4 0x00")
         os.system("i2cset -y -r 9 0x22 5 0x00")
         os.system("i2cset -y -r 9 0x22 6 0x00")
         os.system("i2cset -y -r 9 0x22 7 0x00")
 
-        # initialize PSU I/O (S9100_32X_IO_EXP_PSU_ID)
+        # initialize PSU I/O (S9100_IO_EXP_PSU_ID)
+        os.system("echo ''")
+        os.system("echo '# initialize PSU I/O...'");
         os.system("i2cset -y -r 8 0x23 4 0x00")
         os.system("i2cset -y -r 8 0x23 5 0x00")
         os.system("i2cset -y -r 8 0x23 2 0x00")
@@ -125,7 +182,19 @@ class OnlPlatform_x86_64_ufispace_s9100_32x_r0(OnlPlatformUfiSpace):
         os.system("i2cset -y -r 8 0x23 6 0xBB")
         os.system("i2cset -y -r 8 0x23 7 0xFF")
         
+        # init Fan I/O Expander
+        os.system("echo ''")
+        os.system("echo '# init Fan I/O Expander...'");
+        os.system("i2cset -y -r 9 0x20 4 0x00")
+        os.system("i2cset -y -r 9 0x20 5 0x00")
+        os.system("i2cset -y -r 9 0x20 2 0x00")
+        os.system("i2cset -y -r 9 0x20 3 0x00")
+        os.system("i2cset -y -r 9 0x20 6 0xCC")
+        os.system("i2cset -y -r 9 0x20 7 0xCC")
+
         # initialize ABS Port 0-15
+        os.system("echo ''")
+        os.system("echo '# initialize ABS Port 0-15...'");
         self.new_i2c_device('pca9535', 0x20, 6)
         os.system("echo 496 > /sys/class/gpio/export") 
         os.system("echo 497 > /sys/class/gpio/export") 
@@ -161,6 +230,8 @@ class OnlPlatform_x86_64_ufispace_s9100_32x_r0(OnlPlatformUfiSpace):
         os.system("echo 1 > /sys/class/gpio/gpio511/active_low")
         
         # initialize ABS Port 16-31
+        os.system("echo ''")
+        os.system("echo '# initialize ABS Port 16-31...'");
         self.new_i2c_device('pca9535', 0x21, 6)
         os.system("echo 480 > /sys/class/gpio/export")
         os.system("echo 481 > /sys/class/gpio/export")
@@ -196,6 +267,8 @@ class OnlPlatform_x86_64_ufispace_s9100_32x_r0(OnlPlatformUfiSpace):
         os.system("echo 1 > /sys/class/gpio/gpio495/active_low")
         
         # initialize INT Port 0-15
+        os.system("echo ''")
+        os.system("echo '# initialize INT Port 0-15...'");
         self.new_i2c_device('pca9535', 0x22, 6)
         os.system("echo 464 > /sys/class/gpio/export")
         os.system("echo 465 > /sys/class/gpio/export")
@@ -231,6 +304,8 @@ class OnlPlatform_x86_64_ufispace_s9100_32x_r0(OnlPlatformUfiSpace):
         os.system("echo 1 > /sys/class/gpio/gpio479/active_low")
 
         # initialize INT Port 16-31
+        os.system("echo ''")
+        os.system("echo '# initialize INT Port 16-31...'");
         self.new_i2c_device('pca9535', 0x23, 6)
         os.system("echo 448 > /sys/class/gpio/export")
         os.system("echo 449 > /sys/class/gpio/export")
@@ -266,6 +341,8 @@ class OnlPlatform_x86_64_ufispace_s9100_32x_r0(OnlPlatformUfiSpace):
         os.system("echo 1 > /sys/class/gpio/gpio463/active_low")
         
         # initialize LP Mode Port 0-15
+        os.system("echo ''")
+        os.system("echo '# initialize LP Mode Port 0-15...'");
         self.new_i2c_device('pca9535', 0x20, 7)        
         os.system("echo 432 > /sys/class/gpio/export")
         os.system("echo 433 > /sys/class/gpio/export")
@@ -301,6 +378,8 @@ class OnlPlatform_x86_64_ufispace_s9100_32x_r0(OnlPlatformUfiSpace):
         os.system("echo out > /sys/class/gpio/gpio447/direction")
         
         # initialize LP Mode Port 16-31 
+        os.system("echo ''")
+        os.system("echo '# initialize LP Mode Port 16-31...'");
         self.new_i2c_device('pca9535', 0x21, 7)
         os.system("echo 416 > /sys/class/gpio/export")
         os.system("echo 417 > /sys/class/gpio/export")
@@ -337,6 +416,8 @@ class OnlPlatform_x86_64_ufispace_s9100_32x_r0(OnlPlatformUfiSpace):
         os.system("echo out > /sys/class/gpio/gpio431/direction")
         
         # initialize RST Port 0-15 
+        os.system("echo ''")
+        os.system("echo '# initialize RST Port 0-15...'");
         self.new_i2c_device('pca9535', 0x22, 7)        
         os.system("echo 400 > /sys/class/gpio/export")
         os.system("echo 401 > /sys/class/gpio/export")
@@ -402,8 +483,10 @@ class OnlPlatform_x86_64_ufispace_s9100_32x_r0(OnlPlatformUfiSpace):
         os.system("echo 0 > /sys/class/gpio/gpio413/value")
         os.system("echo 0 > /sys/class/gpio/gpio414/value")
         os.system("echo 0 > /sys/class/gpio/gpio415/value")
-        
+
         # initialize RST Port 16-31
+        os.system("echo ''")
+        os.system("echo '# initialize RST Port 16-31...'");
         self.new_i2c_device('pca9535', 0x23, 7)
         os.system("echo 384 > /sys/class/gpio/export")
         os.system("echo 385 > /sys/class/gpio/export")
@@ -470,106 +553,108 @@ class OnlPlatform_x86_64_ufispace_s9100_32x_r0(OnlPlatformUfiSpace):
         os.system("echo 0 > /sys/class/gpio/gpio398/value")
         os.system("echo 0 > /sys/class/gpio/gpio399/value")
         
-        # initialize MODSEL Port 0-15
-        self.new_i2c_device('pca9535', 0x24, 7)
-        os.system("echo 368 > /sys/class/gpio/export")
-        os.system("echo 369 > /sys/class/gpio/export")
-        os.system("echo 370 > /sys/class/gpio/export")
-        os.system("echo 371 > /sys/class/gpio/export")
-        os.system("echo 372 > /sys/class/gpio/export")
-        os.system("echo 373 > /sys/class/gpio/export")
-        os.system("echo 374 > /sys/class/gpio/export")
-        os.system("echo 375 > /sys/class/gpio/export")
-        os.system("echo 376 > /sys/class/gpio/export")
-        os.system("echo 377 > /sys/class/gpio/export")
-        os.system("echo 378 > /sys/class/gpio/export")
-        os.system("echo 379 > /sys/class/gpio/export")
-        os.system("echo 380 > /sys/class/gpio/export")
-        os.system("echo 381 > /sys/class/gpio/export")
-        os.system("echo 382 > /sys/class/gpio/export")
-        os.system("echo 383 > /sys/class/gpio/export")
-        os.system("echo out > /sys/class/gpio/gpio368/direction")
-        os.system("echo out > /sys/class/gpio/gpio369/direction")
-        os.system("echo out > /sys/class/gpio/gpio370/direction")
-        os.system("echo out > /sys/class/gpio/gpio371/direction")
-        os.system("echo out > /sys/class/gpio/gpio372/direction")
-        os.system("echo out > /sys/class/gpio/gpio373/direction")
-        os.system("echo out > /sys/class/gpio/gpio374/direction")
-        os.system("echo out > /sys/class/gpio/gpio375/direction")
-        os.system("echo out > /sys/class/gpio/gpio376/direction")
-        os.system("echo out > /sys/class/gpio/gpio377/direction")
-        os.system("echo out > /sys/class/gpio/gpio378/direction")
-        os.system("echo out > /sys/class/gpio/gpio379/direction")
-        os.system("echo out > /sys/class/gpio/gpio380/direction")
-        os.system("echo out > /sys/class/gpio/gpio381/direction")
-        os.system("echo out > /sys/class/gpio/gpio382/direction")
-        os.system("echo out > /sys/class/gpio/gpio383/direction")
+        ## initialize MODSEL Port 0-15
+        #os.system("echo '# initialize MODSEL Port 0-15...'");
+        #self.new_i2c_device('pca9535', 0x24, 7)
+        #os.system("echo 368 > /sys/class/gpio/export")
+        #os.system("echo 369 > /sys/class/gpio/export")
+        #os.system("echo 370 > /sys/class/gpio/export")
+        #os.system("echo 371 > /sys/class/gpio/export")
+        #os.system("echo 372 > /sys/class/gpio/export")
+        #os.system("echo 373 > /sys/class/gpio/export")
+        #os.system("echo 374 > /sys/class/gpio/export")
+        #os.system("echo 375 > /sys/class/gpio/export")
+        #os.system("echo 376 > /sys/class/gpio/export")
+        #os.system("echo 377 > /sys/class/gpio/export")
+        #os.system("echo 378 > /sys/class/gpio/export")
+        #os.system("echo 379 > /sys/class/gpio/export")
+        #os.system("echo 380 > /sys/class/gpio/export")
+        #os.system("echo 381 > /sys/class/gpio/export")
+        #os.system("echo 382 > /sys/class/gpio/export")
+        #os.system("echo 383 > /sys/class/gpio/export")
+        #os.system("echo out > /sys/class/gpio/gpio368/direction")
+        #os.system("echo out > /sys/class/gpio/gpio369/direction")
+        #os.system("echo out > /sys/class/gpio/gpio370/direction")
+        #os.system("echo out > /sys/class/gpio/gpio371/direction")
+        #os.system("echo out > /sys/class/gpio/gpio372/direction")
+        #os.system("echo out > /sys/class/gpio/gpio373/direction")
+        #os.system("echo out > /sys/class/gpio/gpio374/direction")
+        #os.system("echo out > /sys/class/gpio/gpio375/direction")
+        #os.system("echo out > /sys/class/gpio/gpio376/direction")
+        #os.system("echo out > /sys/class/gpio/gpio377/direction")
+        #os.system("echo out > /sys/class/gpio/gpio378/direction")
+        #os.system("echo out > /sys/class/gpio/gpio379/direction")
+        #os.system("echo out > /sys/class/gpio/gpio380/direction")
+        #os.system("echo out > /sys/class/gpio/gpio381/direction")
+        #os.system("echo out > /sys/class/gpio/gpio382/direction")
+        #os.system("echo out > /sys/class/gpio/gpio383/direction")
         
-        # initialize MODSEL Port 16-31
-        self.new_i2c_device('pca9535', 0x25, 7)        
-        os.system("echo 352 > /sys/class/gpio/export")
-        os.system("echo 353> /sys/class/gpio/export")
-        os.system("echo 354> /sys/class/gpio/export")
-        os.system("echo 355> /sys/class/gpio/export")
-        os.system("echo 356 > /sys/class/gpio/export")
-        os.system("echo 357 > /sys/class/gpio/export")
-        os.system("echo 358 > /sys/class/gpio/export")
-        os.system("echo 359 > /sys/class/gpio/export")
-        os.system("echo 360 > /sys/class/gpio/export")
-        os.system("echo 361 > /sys/class/gpio/export")
-        os.system("echo 362 > /sys/class/gpio/export")
-        os.system("echo 363 > /sys/class/gpio/export")
-        os.system("echo 364 > /sys/class/gpio/export")
-        os.system("echo 365 > /sys/class/gpio/export")
-        os.system("echo 366 > /sys/class/gpio/export")
-        os.system("echo 367 > /sys/class/gpio/export")
-        os.system("echo out > /sys/class/gpio/gpio352/direction")
-        os.system("echo out > /sys/class/gpio/gpio353/direction")
-        os.system("echo out > /sys/class/gpio/gpio354/direction")
-        os.system("echo out > /sys/class/gpio/gpio355/direction")
-        os.system("echo out > /sys/class/gpio/gpio356/direction")
-        os.system("echo out > /sys/class/gpio/gpio357/direction")
-        os.system("echo out > /sys/class/gpio/gpio358/direction")
-        os.system("echo out > /sys/class/gpio/gpio359/direction")
-        os.system("echo out > /sys/class/gpio/gpio360/direction")
-        os.system("echo out > /sys/class/gpio/gpio361/direction")
-        os.system("echo out > /sys/class/gpio/gpio362/direction")
-        os.system("echo out > /sys/class/gpio/gpio363/direction")
-        os.system("echo out > /sys/class/gpio/gpio364/direction")
-        os.system("echo out > /sys/class/gpio/gpio365/direction")
-        os.system("echo out > /sys/class/gpio/gpio366/direction")
-        os.system("echo out > /sys/class/gpio/gpio367/direction")
-        
-        # initialize qsfp eeprom 
+        ## initialize MODSEL Port 16-31
+        #os.system("echo '# initialize MODSEL Port 16-31...'");
+        #self.new_i2c_device('pca9535', 0x25, 7)        
+        #os.system("echo 352 > /sys/class/gpio/export")
+        #os.system("echo 353> /sys/class/gpio/export")
+        #os.system("echo 354> /sys/class/gpio/export")
+        #os.system("echo 355> /sys/class/gpio/export")
+        #os.system("echo 356 > /sys/class/gpio/export")
+        #os.system("echo 357 > /sys/class/gpio/export")
+        #os.system("echo 358 > /sys/class/gpio/export")
+        #os.system("echo 359 > /sys/class/gpio/export")
+        #os.system("echo 360 > /sys/class/gpio/export")
+        #os.system("echo 361 > /sys/class/gpio/export")
+        #os.system("echo 362 > /sys/class/gpio/export")
+        #os.system("echo 363 > /sys/class/gpio/export")
+        #os.system("echo 364 > /sys/class/gpio/export")
+        #os.system("echo 365 > /sys/class/gpio/export")
+        #os.system("echo 366 > /sys/class/gpio/export")
+        #os.system("echo 367 > /sys/class/gpio/export")
+        #os.system("echo out > /sys/class/gpio/gpio352/direction")
+        #os.system("echo out > /sys/class/gpio/gpio353/direction")
+        #os.system("echo out > /sys/class/gpio/gpio354/direction")
+        #os.system("echo out > /sys/class/gpio/gpio355/direction")
+        #os.system("echo out > /sys/class/gpio/gpio356/direction")
+        #os.system("echo out > /sys/class/gpio/gpio357/direction")
+        #os.system("echo out > /sys/class/gpio/gpio358/direction")
+        #os.system("echo out > /sys/class/gpio/gpio359/direction")
+        #os.system("echo out > /sys/class/gpio/gpio360/direction")
+        #os.system("echo out > /sys/class/gpio/gpio361/direction")
+        #os.system("echo out > /sys/class/gpio/gpio362/direction")
+        #os.system("echo out > /sys/class/gpio/gpio363/direction")
+        #os.system("echo out > /sys/class/gpio/gpio364/direction")
+        #os.system("echo out > /sys/class/gpio/gpio365/direction")
+        #os.system("echo out > /sys/class/gpio/gpio366/direction")
+        #os.system("echo out > /sys/class/gpio/gpio367/direction")
+
+        # initialize CPLD
+        os.system("echo ''")
+        os.system("echo '# initialize CPLD...'");
+        self.new_i2c_device("i2c_cpld", 0x33, 0)
+       
+        # initialize qsfp eeprom (TBD
+        os.system("echo ''")
+        os.system("echo '# initialize qsfp eeprom...'");
         for port in range(1, 33):
             self.new_i2c_device('sff8436', 0x50, port + 9)
 
-        # initialize sys eeprom devices
+        # initialize sys eeprom devices (mb eeprom)
+        os.system("echo ''")
+        os.system("echo '# initialize sys eeprom...'")
         self.new_i2c_device('mb_eeprom', 0x54, 9)
         
-        # initialize temperature sensor
-        os.system("i2cset -y -r -f 0 0x2F 0x00 0x80")
-        os.system("i2cset -y -r -f 0 0x2F 0x05 0x7F")
-        os.system("i2cset -y -r -f 0 0x2F 0x04 0x0A")  
-        
         # initialize psu eeprom devices
+        os.system("echo ''")
+        os.system("echo '# initialize psu eeprom...'");
         self.new_i2c_device('eeprom', 0x50, 8)
         self.new_i2c_device('eeprom', 0x50, 9)
 
         # initialize sys led
+        os.system("echo ''")
+        os.system("echo '# initialize sys led (green)...'");
         os.system("i2cset -m 0x40 -y -r 9 0x22 2 0xFF")
         os.system("i2cset -m 0x80 -y -r 9 0x22 2 0x00")
 
-        # init CPLD LED_CLR Register (Switch Port LED)
-        os.system("i2cset -y 0 0x33 0x34 0x10")
-        
-        # init Fan I/O Exanpler
-        os.system("i2cset -y -r 9 0x20 4 0x00")
-        os.system("i2cset -y -r 9 0x20 5 0x00")
-        os.system("i2cset -y -r 9 0x20 2 0x00")
-        os.system("i2cset -y -r 9 0x20 3 0x00")
-        os.system("i2cset -y -r 9 0x20 6 0xCC")
-        os.system("i2cset -y -r 9 0x20 7 0xCC")
+        # onie syseeprom
+        self.insmod("x86-64-ufispace-s9100-32x-onie-syseeprom.ko")
 
         return True
         

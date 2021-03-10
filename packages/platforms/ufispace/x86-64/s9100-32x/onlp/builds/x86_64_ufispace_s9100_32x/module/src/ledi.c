@@ -19,198 +19,678 @@
  * </bsn.cl>
  ************************************************************
  *
+ * LED Implementation
  *
  ***********************************************************/
-#include <onlp/platformi/ledi.h>
-#include <stdio.h>
-#include <sys/mman.h>
 #include <stdio.h>
 #include <string.h>
-#include <fcntl.h>
+#include <onlp/platformi/ledi.h>
+#include <onlplib/file.h>
+#include <onlplib/i2c.h>
+//#include <sys/mman.h>
+//#include <fcntl.h>
 
 #include "platform_lib.h"
 
-/*
+/**
  * Get the information for the given LED OID.
+ * 
+ * [01] CHASSIS----[01] ONLP_LED_SYSTEM
+ *            |----[02] ONLP_LED_PSU1
+ *            |----[03] ONLP_LED_PSU2
+ *            |----[04] ONLP_LED_FAN
+ *            |
+ *            |----[01] ONLP_FAN_1----[05] ONLP_LED_FAN_TRAY1
+ *            |----[02] ONLP_FAN_2----[05] ONLP_LED_FAN_TRAY1
+ *            |----[03] ONLP_FAN_3----[06] ONLP_LED_FAN_TRAY2
+ *            |----[04] ONLP_FAN_4----[06] ONLP_LED_FAN_TRAY2
+ *            |----[05] ONLP_FAN_5----[07] ONLP_LED_FAN_TRAY3
+ *            |----[06] ONLP_FAN_6----[07] ONLP_LED_FAN_TRAY3
+ *            |----[07] ONLP_FAN_7----[08] ONLP_LED_FAN_TRAY4
+ *            |----[08] ONLP_FAN_8----[08] ONLP_LED_FAN_TRAY4
  */
-static onlp_led_info_t led_info[] =
-{
+static onlp_led_info_t __onlp_led_info[ONLP_LED_COUNT] = {
     { }, /* Not used */
-    {
-        { LED_OID_SYSTEM, "Chassis LED 1 (SYS LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN,
+    {   
+        .hdr = { 
+            .id = ONLP_LED_ID_CREATE(ONLP_LED_SYSTEM),
+            .description = "Chassis LED 1 (SYS LED)",
+            .poid = 0,
+        },  
+        .status = ONLP_LED_STATUS_PRESENT,
+        .caps = ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN,
+        .mode = ONLP_LED_MODE_GREEN,
+    },  
+    {   
+        .hdr = { 
+            .id = ONLP_LED_ID_CREATE(ONLP_LED_PSU1),
+            .description = "Chassis LED 2 (PSU1 LED)",
+            .poid = 0,
+        },
+        .status = ONLP_LED_STATUS_PRESENT,
+        .caps = ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN,
+        .mode = ONLP_LED_MODE_GREEN,
     },
     {
-        { LED_OID_FAN, "Chassis LED 2 (FAN LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_AUTO,
+        .hdr = {
+            .id = ONLP_LED_ID_CREATE(ONLP_LED_PSU2),
+            .description = "Chassis LED 3 (PSU2 LED)",
+            .poid = 0,
+        },
+        .status = ONLP_LED_STATUS_PRESENT,
+        .caps = ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN,
+        .mode = ONLP_LED_MODE_GREEN,
     },
     {
-        { LED_OID_PSU1, "Chassis LED 3 (PSU1 LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_AUTO,
+        .hdr = {
+            .id = ONLP_LED_ID_CREATE(ONLP_LED_FAN),
+            .description = "Chassis LED 4 (FAN LED)",
+            .poid = 0,
+        },
+        .status = ONLP_LED_STATUS_PRESENT,
+        .caps = ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN,
+        .mode = ONLP_LED_MODE_GREEN,
     },
     {
-        { LED_OID_PSU2, "Chassis LED 4 (PSU2 LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_AUTO,
+        .hdr = {
+            .id = ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY1),
+            .description = "Rear LED 1 (FAN TRAY1 LED)",
+            .poid = ONLP_FAN_ID_CREATE(ONLP_FAN_1),
+        },
+        .status = ONLP_LED_STATUS_PRESENT,
+        .caps = ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN,
+        .mode = ONLP_LED_MODE_GREEN,
     },
     {
-        { LED_OID_FAN_TRAY1, "Rear LED 1 (FAN TRAY1 LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE |
-        ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_AUTO,
+        .hdr = {
+            .id = ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY2),
+            .description = "Rear LED 2 (FAN TRAY2 LED)",
+            .poid = ONLP_FAN_ID_CREATE(ONLP_FAN_3),
+        },
+        .status = ONLP_LED_STATUS_PRESENT,
+        .caps = ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN,
+        .mode = ONLP_LED_MODE_GREEN,
     },
     {
-        { LED_OID_FAN_TRAY2, "Rear LED 2 (FAN TRAY2 LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE |
-        ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_AUTO,
+        .hdr = {
+            .id = ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY3),
+            .description = "Rear LED 3 (FAN TRAY3 LED)",
+            .poid = ONLP_FAN_ID_CREATE(ONLP_FAN_5),
+        },
+        .status = ONLP_LED_STATUS_PRESENT,
+        .caps = ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN,
+        .mode = ONLP_LED_MODE_GREEN,
     },
     {
-        { LED_OID_FAN_TRAY3, "Rear LED 3 (FAN TRAY3 LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE |
-        ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_AUTO,
+        .hdr = {
+            .id = ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY4),
+            .description = "Rear LED 4 (FAN TRAY4 LED)",
+            .poid = ONLP_FAN_ID_CREATE(ONLP_FAN_7),
+        },
+        .status = ONLP_LED_STATUS_PRESENT,
+        .caps = ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN,
+        .mode = ONLP_LED_MODE_GREEN,
     },
-    {
-        { LED_OID_FAN_TRAY4, "Rear LED 4 (FAN TRAY4 LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE |
-        ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_AUTO,
-    }
-
 };
 
-extern int sys_fan_info_get(onlp_fan_info_t* info, int id);
 
-/*
- * This function will be called prior to any other onlp_ledi_* functions.
+/**
+ * @brief Update the status of LED's oid header.
+ * @param id The LED ID.
+ * @param[out] info Receives the header.
  */
-int
-onlp_ledi_init(void)
-{  
+static int update_ledi_status(int local_id, onlp_led_info_t* info)
+{
+    int fan_presence = 0;
+
+    /* clear ledi status */
+    info->status = 0;
+
+    /* get led present status */
+    if (local_id >= ONLP_LED_SYSTEM && local_id <= ONLP_LED_FAN) {
+        info->status = ONLP_LED_STATUS_PRESENT;
+    } else if (local_id >= ONLP_LED_FAN_TRAY1 && local_id <= ONLP_LED_FAN_TRAY4) {
+        if (local_id == ONLP_LED_FAN_TRAY1) {
+            fan_presence = get_fan_present_status(ONLP_FAN_1);
+        } else if (local_id == ONLP_LED_FAN_TRAY2) {
+            fan_presence = get_fan_present_status(ONLP_FAN_3);
+        } else if (local_id == ONLP_LED_FAN_TRAY3) {
+            fan_presence = get_fan_present_status(ONLP_FAN_5);
+        } else if (local_id == ONLP_LED_FAN_TRAY4) {
+            fan_presence = get_fan_present_status(ONLP_FAN_7);
+        }
+        if (fan_presence == 0) {
+            info->status &= ~ONLP_LED_STATUS_PRESENT;
+        } else if (fan_presence == 1) {
+            info->status |= ONLP_LED_STATUS_PRESENT;
+        } else {
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    } else {
+        AIM_LOG_ERROR("unknown LED id (%d), func=%s\n", local_id, __FUNCTION__);
+        return ONLP_STATUS_E_PARAM;
+    }
+
     return ONLP_STATUS_OK;
 }
 
-int
-onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
+
+/**
+ * @brief Update the information structure for the given System LED
+ * @param id The LED Local ID
+ * @param[out] info Receives the FAN information.
+ */
+static int update_ledi_system_info(int local_id, onlp_led_info_t* info)
 {
-    int led_id, pw_exist, pw_good, rc, psu_mask, fan_id;
-    onlp_fan_info_t fan_info;
+    int ret = ONLP_STATUS_OK;
 
-    memset(&fan_info, 0, sizeof(onlp_fan_info_t));
-    led_id = ONLP_OID_ID_GET(id);
+    if (local_id != ONLP_LED_SYSTEM) {
+        AIM_LOG_ERROR("incorrect parameter, id=%d, func=%s\n", local_id, __FUNCTION__);
+        return ONLP_STATUS_E_PARAM;
+    }
 
-    *info = led_info[led_id];
+    //set system led to green
+    ret = onlp_i2c_modifyb(9, 0x22, 0x02, 0x3F, 0x40, ONLP_I2C_F_FORCE);
+    if (ret == ONLP_STATUS_OK) {
+        info->mode = ONLP_LED_MODE_GREEN;
+    } else {
+        return ONLP_STATUS_E_INTERNAL;
+    }
 
-    if (id == LED_OID_PSU1 || id == LED_OID_PSU2) {
-        if (id == LED_OID_PSU1) {
-            psu_mask = PSU1_MUX_MASK;
+    return ONLP_STATUS_OK;
+}
+
+
+
+
+/**
+ * @brief Update the information structure for the given PSU LED
+ * @param id The LED Local ID
+ * @param[out] info Receives the FAN information.
+ */
+static int update_ledi_psu_info(int local_id, onlp_led_info_t* info)
+{
+    int ret = ONLP_STATUS_OK;
+    int psu_id = 0;
+    int psu_presence = 0;
+    int psu_pwgood = 0;
+
+    if (local_id == ONLP_LED_PSU1) {
+        psu_id = ONLP_PSU_1;
+    } else if (local_id == ONLP_LED_PSU2) {
+        psu_id = ONLP_PSU_2;
+    } else {
+        AIM_LOG_ERROR("incorrect parameter, id=%d, func=%s\n", local_id, __FUNCTION__);
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    psu_presence = get_psu_present_status(psu_id);
+    psu_pwgood = get_psu_pwgood_status(psu_id);
+
+    if (psu_presence < 0 || psu_pwgood < 0) {
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (local_id == ONLP_LED_PSU1) {
+        if (psu_presence == 1 && psu_pwgood == 1) {
+            /* LED GREEN */
+            ret = onlp_i2c_modifyb(9, 0x22, 0x02, 0b11111100, 0b00000001, ONLP_I2C_F_FORCE);
+            if (ret == ONLP_STATUS_OK) {
+                info->mode = ONLP_LED_MODE_GREEN;
+            } else {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+        } else if (psu_presence == 1 && psu_pwgood == 0) {
+            /* LED ORANGE */
+            ret = onlp_i2c_modifyb(9, 0x22, 0x02, 0b11111100, 0b00000010, ONLP_I2C_F_FORCE);
+            if (ret == ONLP_STATUS_OK) {
+                info->mode = ONLP_LED_MODE_ORANGE;
+            } else {
+                return ONLP_STATUS_E_INTERNAL;
+            }
         } else {
-            psu_mask = PSU2_MUX_MASK;
-        }
-        /* check psu status */
-        if ((rc = psu_present_get(&pw_exist, I2C_BUS_0, psu_mask)) != ONLP_STATUS_OK) {
-            return ONLP_STATUS_E_INTERNAL;
-        }
-        if ((rc = psu_pwgood_get(&pw_good, I2C_BUS_0, psu_mask)) != ONLP_STATUS_OK) {
-            return ONLP_STATUS_E_INTERNAL;
-        }
-        /* psu not present */
-        if (pw_exist != PSU_STATUS_PRESENT) {
-            info->status &= ~ONLP_LED_STATUS_ON;
-            info->mode = ONLP_LED_MODE_OFF;
-        } else if (pw_good != PSU_STATUS_POWER_GOOD) {
-            info->status |= ONLP_LED_STATUS_ON;
-            info->mode |= ONLP_LED_MODE_ORANGE; 
-        } else {
-            info->status |= ONLP_LED_STATUS_ON;
-            info->mode |= ONLP_LED_MODE_GREEN;
-        }
-    } else if (id == LED_OID_FAN) {
-        info->status |= ONLP_LED_STATUS_ON;
-        info->mode |= ONLP_LED_MODE_GREEN;
-        for (fan_id=FAN_ID_FAN1; fan_id<=FAN_ID_FAN8; ++fan_id) {
-            rc = sys_fan_info_get(&fan_info, fan_id);
-            if (rc != ONLP_STATUS_OK || fan_info.status & ONLP_FAN_STATUS_FAILED) {
-                info->mode &= ~ONLP_LED_MODE_GREEN;
-                info->mode |= ONLP_LED_MODE_ORANGE;
-                break;
+            /* LED OFF */
+            ret = onlp_i2c_modifyb(9, 0x22, 0x02, 0b11111100, 0b00000011, ONLP_I2C_F_FORCE);
+            if (ret == ONLP_STATUS_OK) {
+                info->mode = ONLP_LED_MODE_OFF;
+            } else {
+                return ONLP_STATUS_E_INTERNAL;
             }
         }
-    } else if (id == LED_OID_SYSTEM) {
-        info->status |= ONLP_LED_STATUS_ON;
-        info->mode |= ONLP_LED_MODE_GREEN;
-    } else {
-        info->status |= ONLP_LED_STATUS_ON;
-        info->mode |= ONLP_LED_MODE_ON;
+
+    } else if (local_id == ONLP_LED_PSU2) {
+        if (psu_presence == 1 && psu_pwgood == 1) {
+            /* LED GREEN */
+            ret = onlp_i2c_modifyb(9, 0x22, 0x02, 0b11001111, 0b00010000, ONLP_I2C_F_FORCE);
+            if (ret == ONLP_STATUS_OK) {
+                info->mode = ONLP_LED_MODE_GREEN;
+            } else {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+        } else if (psu_presence == 1 && psu_pwgood == 0) {
+            /* LED ORANGE */
+            ret = onlp_i2c_modifyb(9, 0x22, 0x02, 0b11001111, 0b00100000, ONLP_I2C_F_FORCE);
+            if (ret == ONLP_STATUS_OK) {
+                info->mode = ONLP_LED_MODE_ORANGE;
+            } else {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+        } else {
+            /* LED OFF */
+            ret = onlp_i2c_modifyb(9, 0x22, 0x02, 0b11001111, 0b00110000, ONLP_I2C_F_FORCE);
+            if (ret == ONLP_STATUS_OK) {
+                info->mode = ONLP_LED_MODE_OFF;
+            } else {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+        }
     }
 
     return ONLP_STATUS_OK;
 }
 
-/*
- * Turn an LED on or off.
- *
- * This function will only be called if the LED OID supports the ONOFF
- * capability.
- *
- * What 'on' means in terms of colors or modes for multimode LEDs is
- * up to the platform to decide. This is intended as baseline toggle mechanism.
+
+
+/**
+ * @brief Update the information structure for the given FAN LED
+ * @param id The LED Local ID
+ * @param[out] info Receives the FAN information.
  */
-int
-onlp_ledi_set(onlp_oid_t id, int on_or_off)
+static int update_ledi_fan_info(int local_id, onlp_led_info_t* info)
 {
-    if (!on_or_off) {
-        return onlp_ledi_mode_set(id, ONLP_LED_MODE_OFF);
+    int ret = ONLP_STATUS_OK;
+    int fan_presence = 0;
+    int fan_operational = 0;
+    int fan_absent_flag = 0; //1: all fans are absent.
+    int fan_failed_flag = 0; //1: at least one fan is failed
+    int i = 0;
+
+    if (local_id != ONLP_LED_FAN) {
+        AIM_LOG_ERROR("incorrect parameter, id=%d, func=%s\n", local_id, __FUNCTION__);
+        return ONLP_STATUS_E_PARAM;
     }
 
+    /* If all fans are absent, turn off the FAN LED. */
+    for(i=ONLP_FAN_1;i<=ONLP_FAN_8;i++) {
+        fan_presence = get_fan_present_status(i);
+        if (fan_presence == 1) {
+            fan_absent_flag = 0;
+            break;
+        } else {
+            fan_absent_flag = 1;
+        }
+    }
+
+    /* If one of the Fans is alarm, set FAN LED to Orange. */
+    for(i=ONLP_FAN_1;i<=ONLP_FAN_8;i++) {
+        fan_operational = get_fan_operational_status(i);
+        if (fan_operational == 0) {
+            fan_failed_flag = 1;
+            break;
+        } else {
+            fan_failed_flag = 0;
+        }
+    }
+    
+    if (fan_absent_flag == 1) {
+        /* LED OFF */
+        ret = onlp_i2c_modifyb(9, 0x22, 0x02, 0b11110011, 0b00001100, ONLP_I2C_F_FORCE);
+        if (ret == ONLP_STATUS_OK) {
+            info->mode = ONLP_LED_MODE_OFF;
+        } else {
+            return ONLP_STATUS_E_INTERNAL;
+        }   
+    } else if (fan_failed_flag == 0) {
+        /* LED GREEN */
+        ret = onlp_i2c_modifyb(9, 0x22, 0x02, 0b11110011, 0b00000100, ONLP_I2C_F_FORCE);
+        if (ret == ONLP_STATUS_OK) {
+            info->mode = ONLP_LED_MODE_GREEN;
+        } else {
+            return ONLP_STATUS_E_INTERNAL;
+        }   
+    } else if (fan_failed_flag == 1) {
+        /* LED ORANGE */
+        ret = onlp_i2c_modifyb(9, 0x22, 0x02, 0b11110011, 0b00001000, ONLP_I2C_F_FORCE);
+        if (ret == ONLP_STATUS_OK) {
+            info->mode = ONLP_LED_MODE_ORANGE;
+        } else {
+            return ONLP_STATUS_E_INTERNAL;
+        }   
+    } else {
+        AIM_LOG_ERROR("unknown error, fan_absent_flag=%d, fan_failed_flag=%d, func=%s\n", fan_absent_flag, fan_failed_flag, __FUNCTION__);
+        return ONLP_STATUS_E_INTERNAL;
+    }   
+    
+
+    return ONLP_STATUS_OK;
+}
+
+
+
+/**
+ * @brief Update the information structure for the given FANTRAY LED
+ * @param id The LED Local ID
+ * @param[out] info Receives the FAN information.
+ */
+static int update_ledi_fantray_info(int local_id, onlp_led_info_t* info)
+{
+    int ret = ONLP_STATUS_OK;
+    int fan_presence = 0;
+    int fan_operational = 0;
+
+    if (local_id < ONLP_LED_FAN_TRAY1 || local_id > ONLP_LED_FAN_TRAY4) {
+        AIM_LOG_ERROR("incorrect parameter, id=%d, func=%s\n", local_id, __FUNCTION__);
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    if (local_id == ONLP_LED_FAN_TRAY1) {
+        fan_presence = get_fan_present_status(ONLP_FAN_1);
+        fan_operational = get_fan_operational_status(ONLP_FAN_1);
+
+        if (fan_presence < 0 || fan_operational < 0) {
+            return ONLP_STATUS_E_INTERNAL;
+        }
+
+        if (fan_presence == 0) {
+            /* LED OFF */
+            info->mode = ONLP_LED_MODE_OFF;
+        } else if (fan_operational == 1) {
+            /* LED GREEN */
+            ret = onlp_i2c_modifyb(9, 0x20, 0x02, 0b11111100, 0b00000001, ONLP_I2C_F_FORCE);
+            if (ret == ONLP_STATUS_OK) {
+                info->mode = ONLP_LED_MODE_GREEN;
+            } else {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+        } else if (fan_operational == 0) {
+            /* LED ORANGE */
+            ret = onlp_i2c_modifyb(9, 0x20, 0x02, 0b11111100, 0b00000010, ONLP_I2C_F_FORCE);
+            if (ret == ONLP_STATUS_OK) {
+                info->mode = ONLP_LED_MODE_ORANGE;
+            } else {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+        } else {
+            AIM_LOG_ERROR("unknown error, fan_presence=%d, fan_operational=%d, func=%s\n", fan_presence, fan_operational, __FUNCTION__);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    } else if (local_id == ONLP_LED_FAN_TRAY2) {
+        fan_presence = get_fan_present_status(ONLP_FAN_3);
+        fan_operational = get_fan_operational_status(ONLP_FAN_3);
+
+        if (fan_presence < 0 || fan_operational < 0) {
+            return ONLP_STATUS_E_INTERNAL;
+        }
+
+        if (fan_presence == 0) {
+            /* LED OFF */
+            info->mode = ONLP_LED_MODE_OFF;
+        } else if (fan_operational == 1) {
+            /* LED GREEN */
+            ret = onlp_i2c_modifyb(9, 0x20, 0x02, 0b11001111, 0b00010000, ONLP_I2C_F_FORCE);
+            if (ret == ONLP_STATUS_OK) {
+                info->mode = ONLP_LED_MODE_GREEN;
+            } else {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+        } else if (fan_operational == 0) {
+            /* LED ORANGE */
+            ret = onlp_i2c_modifyb(9, 0x20, 0x02, 0b11001111, 0b00100000, ONLP_I2C_F_FORCE);
+            if (ret == ONLP_STATUS_OK) {
+                info->mode = ONLP_LED_MODE_ORANGE;
+            } else {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+        } else {
+            AIM_LOG_ERROR("unknown error, fan_presence=%d, fan_operational=%d, func=%s\n", fan_presence, fan_operational, __FUNCTION__);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    } else if (local_id == ONLP_LED_FAN_TRAY3) {
+        fan_presence = get_fan_present_status(ONLP_FAN_5);
+        fan_operational = get_fan_operational_status(ONLP_FAN_5);
+
+        if (fan_presence < 0 || fan_operational < 0) {
+            return ONLP_STATUS_E_INTERNAL;
+        }
+
+        if (fan_presence == 0) {
+            /* LED OFF */
+            info->mode = ONLP_LED_MODE_OFF;
+        } else if (fan_operational == 1) {
+            /* LED GREEN */
+            ret = onlp_i2c_modifyb(9, 0x20, 0x03, 0b11111100, 0b00000010, ONLP_I2C_F_FORCE);
+            if (ret == ONLP_STATUS_OK) {
+                info->mode = ONLP_LED_MODE_GREEN;
+            } else {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+        } else if (fan_operational == 0) {
+            /* LED ORANGE */
+            ret = onlp_i2c_modifyb(9, 0x20, 0x03, 0b11111100, 0b00000001, ONLP_I2C_F_FORCE);
+            if (ret == ONLP_STATUS_OK) {
+                info->mode = ONLP_LED_MODE_ORANGE;
+            } else {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+        } else {
+            AIM_LOG_ERROR("unknown error, fan_presence=%d, fan_operational=%d, func=%s\n", fan_presence, fan_operational, __FUNCTION__);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    } else if (local_id == ONLP_LED_FAN_TRAY4) {
+        fan_presence = get_fan_present_status(ONLP_FAN_7);
+        fan_operational = get_fan_operational_status(ONLP_FAN_7);
+
+        if (fan_presence < 0 || fan_operational < 0) {
+            return ONLP_STATUS_E_INTERNAL;
+        }
+
+        if (fan_presence == 0) {
+            /* LED OFF */
+            info->mode = ONLP_LED_MODE_OFF;
+        } else if (fan_operational == 1) {
+            /* LED GREEN */
+            ret = onlp_i2c_modifyb(9, 0x20, 0x03, 0b11001111, 0b00010000, ONLP_I2C_F_FORCE);
+            if (ret == ONLP_STATUS_OK) {
+                info->mode = ONLP_LED_MODE_GREEN;
+            } else {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+        } else if (fan_operational == 0) {
+            /* LED ORANGE */
+            ret = onlp_i2c_modifyb(9, 0x20, 0x03, 0b11001111, 0b00100000, ONLP_I2C_F_FORCE);
+            if (ret == ONLP_STATUS_OK) {
+                info->mode = ONLP_LED_MODE_ORANGE;
+            } else {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+        } else {
+            AIM_LOG_ERROR("unknown error, fan_presence=%d, fan_operational=%d, func=%s\n", fan_presence, fan_operational, __FUNCTION__);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    }
+
+    return ONLP_STATUS_OK;
+}
+
+
+/**
+ * @brief Update the information structure for the given LED
+ * @param id The LED Local ID
+ * @param[out] info Receives the FAN information.
+ */
+static int update_ledi_info(int local_id, onlp_led_info_t* info)
+{
+    int ret = ONLP_STATUS_OK;
+
+    if (local_id == ONLP_LED_SYSTEM) {
+        /* update system ledi info */
+        ret = update_ledi_system_info(local_id, info);
+        if (ret != ONLP_STATUS_OK) {
+            return ret;
+        }
+    } else if (local_id == ONLP_LED_PSU1 || local_id == ONLP_LED_PSU2) {
+        /* update psu ledi info */
+        ret = update_ledi_psu_info(local_id, info);
+        if (ret != ONLP_STATUS_OK) {
+            return ret;
+        }
+    } else if (local_id == ONLP_LED_FAN) {
+        /* update fan ledi info */
+        ret = update_ledi_fan_info(local_id, info);
+        if (ret != ONLP_STATUS_OK) {
+            return ret;
+        }
+    } else if (local_id >= ONLP_LED_FAN_TRAY1 && local_id <= ONLP_LED_FAN_TRAY4) {
+        /* update fantray ledi info */
+        ret = update_ledi_fantray_info(local_id, info);
+        if (ret != ONLP_STATUS_OK) {
+            return ret;
+        }
+    } else {
+        AIM_LOG_ERROR("unknown LED id (%d), func=%s\n", local_id, __FUNCTION__);
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    return ONLP_STATUS_OK;
+}
+
+
+
+/**
+ * @brief Initialize the LED subsystem.
+ */
+int onlp_ledi_init(void)
+{
+    return ONLP_STATUS_OK;
+}
+
+/**
+ * @brief Get the information for the given LED
+ * @param id The LED OID
+ * @param info [out] Receives the LED information.
+ */
+int onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
+{
+    int ret = ONLP_STATUS_OK;
+    int local_id = ONLP_OID_ID_GET(id);
+
+    /* Set the onlp_led_info_t */
+    memset(info, 0, sizeof(onlp_led_info_t));
+    *info = __onlp_led_info[local_id];
+    ONLP_TRY(onlp_ledi_hdr_get(id, &info->hdr));
+
+    /* Update onlp_led_info_t */
+    ONLP_TRY(update_ledi_status(local_id, info));
+
+    //get and update ledi info
+    if (local_id >= ONLP_LED_SYSTEM && local_id <= ONLP_LED_FAN_TRAY4) {
+        ret = update_ledi_info(local_id, info);
+    } else {
+        AIM_LOG_ERROR("unknown LED id (%d), func=%s\n", local_id, __FUNCTION__);
+        ret = ONLP_STATUS_E_PARAM;
+    }
+
+    return ret;
+}
+
+/**
+ * @brief Get the LED operational status.
+ * @param id The LED OID
+ * @param status [out] Receives the operational status.
+ */
+int onlp_ledi_status_get(onlp_oid_t id, uint32_t* status)
+{
+    int local_id = ONLP_OID_ID_GET(id);
+    int fan_presence = 0;
+
+    /* clear ledi status */
+    *status = 0;
+
+    /* get led present status */
+    if (local_id >= ONLP_LED_SYSTEM && local_id <= ONLP_LED_FAN) {
+        *status = ONLP_LED_STATUS_PRESENT;
+    } else if (local_id >= ONLP_LED_FAN_TRAY1 && local_id <= ONLP_LED_FAN_TRAY4) {
+        if (local_id == ONLP_LED_FAN_TRAY1) {
+            fan_presence = get_fan_present_status(ONLP_FAN_1);
+        } else if (local_id == ONLP_LED_FAN_TRAY2) {
+            fan_presence = get_fan_present_status(ONLP_FAN_3);
+        } else if (local_id == ONLP_LED_FAN_TRAY3) {
+            fan_presence = get_fan_present_status(ONLP_FAN_5);
+        } else if (local_id == ONLP_LED_FAN_TRAY4) {
+            fan_presence = get_fan_present_status(ONLP_FAN_7);
+        }
+        if (fan_presence == 0) {
+            *status &= ~ONLP_LED_STATUS_PRESENT;
+        } else if (fan_presence == 1) {
+            *status |= ONLP_LED_STATUS_PRESENT;
+        } else {
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    } else {
+        AIM_LOG_ERROR("unknown LED id (%d), func=%s\n", local_id, __FUNCTION__);
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    return ONLP_STATUS_OK;
+}
+
+/**
+ * @brief Get the LED header.
+ * @param id The LED OID
+ * @param hdr [out] Receives the header.
+ */
+int onlp_ledi_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr)
+{
+    int ret = ONLP_STATUS_OK;
+    int local_id = ONLP_OID_ID_GET(id);
+
+    /* Set the onlp_led_info_t */
+    *hdr = __onlp_led_info[local_id].hdr;
+
+    return ret;
+}
+
+/**
+ * @brief Turn an LED on or off
+ * @param id The LED OID
+ * @param on_or_off (boolean) on if 1 off if 0
+ * @param This function is only relevant if the ONOFF capability is set.
+ * @notes See onlp_led_set() for a description of the default behavior.
+ */
+int onlp_ledi_set(onlp_oid_t id, int on_or_off)
+{
     return ONLP_STATUS_E_UNSUPPORTED;
 }
 
-/*
- * This function puts the LED into the given mode. It is a more functional
- * interface for multimode LEDs.
- *
- * Only modes reported in the LED's capabilities will be attempted.
+/**
+ * @brief LED ioctl
+ * @param id The LED OID
+ * @param vargs The variable argument list for the ioctl call.
  */
-int
-onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
+int onlp_ledi_ioctl(onlp_oid_t id, va_list vargs)
 {
-    int led_id, rc;
-
-    led_id = ONLP_OID_ID_GET(id);
-    switch (led_id) {
-        case LED_SYSTEM_LED:
-            rc = system_led_set(mode);
-            break;
-        case LED_FAN_LED:
-            rc = fan_led_set(mode);
-            break;
-        case LED_PSU1_LED:
-            rc = psu1_led_set(mode);
-            break;
-        case LED_PSU2_LED:
-            rc = psu2_led_set(mode);
-            break;
-        case LED_FAN_TRAY1:
-        case LED_FAN_TRAY2:
-        case LED_FAN_TRAY3:
-        case LED_FAN_TRAY4:
-            rc = fan_tray_led_set(id, mode);
-            break;
-        default:
-            return ONLP_STATUS_E_INTERNAL;
-            break;
-    }
-
-    return rc;
+    return ONLP_STATUS_E_UNSUPPORTED;
 }
 
-int
-onlp_ledi_ioctl(onlp_oid_t id, va_list vargs)
+/**
+ * @brief Set the LED mode.
+ * @param id The LED OID
+ * @param mode The new mode.
+ * @notes Only called if the mode is advertised in the LED capabilities.
+ */
+int onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 {
-    return ONLP_STATUS_OK;
+    return ONLP_STATUS_E_UNSUPPORTED;
 }
+
+/**
+ * @brief Set the LED character.
+ * @param id The LED OID
+ * @param c The character..
+ * @notes Only called if the char capability is set.
+ */
+int onlp_ledi_char_set(onlp_oid_t id, char c)
+{
+    return ONLP_STATUS_E_UNSUPPORTED;
+}
+

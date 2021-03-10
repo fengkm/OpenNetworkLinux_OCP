@@ -19,7 +19,7 @@
  * </bsn.cl>
  ************************************************************
  *
- *
+ * ONLP System Platform Interface.
  *
  ***********************************************************/
 #include <onlp/platformi/sysi.h>
@@ -36,305 +36,365 @@
 
 #include "platform_lib.h"
 
-const char*
-onlp_sysi_platform_get(void)
-{   
-    return "x86-64-ufispace-s9100-32x-r0";
-}
+#define CMD_BIOS_VER  "dmidecode -s bios-version | tail -1 | tr -d '\r\n'"
 
-int
-onlp_sysi_init(void)
-{    
+
+/* This is definitions for x86-64-ufispace-s9700-53dx*/
+/* OID map*/
+/*
+ * [01] CHASSIS----[01] ONLP_THERMAL_FRONT_MAC
+ *            |----[02] ONLP_THERMAL_REAR_MAC
+ *            |----[03] ONLP_THERMAL_CPU1
+ *            |----[04] ONLP_THERMAL_CPU2
+ *            |----[05] ONLP_THERMAL_CPU3
+ *            |----[06] ONLP_THERMAL_CPU4
+ *            |
+ *            |----[01] ONLP_FAN_1----[05] ONLP_LED_FAN_TRAY1
+ *            |----[02] ONLP_FAN_2----[05] ONLP_LED_FAN_TRAY1
+ *            |----[03] ONLP_FAN_3----[06] ONLP_LED_FAN_TRAY2
+ *            |----[04] ONLP_FAN_4----[06] ONLP_LED_FAN_TRAY2
+ *            |----[05] ONLP_FAN_5----[07] ONLP_LED_FAN_TRAY3
+ *            |----[06] ONLP_FAN_6----[07] ONLP_LED_FAN_TRAY3
+ *            |----[07] ONLP_FAN_7----[08] ONLP_LED_FAN_TRAY4
+ *            |----[08] ONLP_FAN_8----[08] ONLP_LED_FAN_TRAY4
+ *            |
+ *            |----[01] ONLP_PSU_1----[07] ONLP_THERMAL_PSU1_1
+ *            |                  |----[08] ONLP_THERMAL_PSU1_2
+ *            |                  |----[09] ONLP_PSU1_FAN_1
+ *            |
+ *            |----[02] ONLP_PSU_2----[09] ONLP_THERMAL_PSU2_1
+ *            |                  |----[10] ONLP_THERMAL_PSU2_2
+ *            |                  |----[10] ONLP_PSU2_FAN_1
+ *            |
+ *            |----[01] ONLP_LED_SYSTEM
+ *            |----[02] ONLP_LED_PSU1
+ *            |----[03] ONLP_LED_PSU2
+ *            |----[04] ONLP_LED_FAN
+ */
+static onlp_oid_t __onlp_oid_info[] = { 
+    ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_FRONT_MAC),
+    ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_REAR_MAC),
+    ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_CPU1),
+    ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_CPU2),
+    ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_CPU3),
+    ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_CPU4),
+    //ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_PSU1_1),
+    //ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_PSU1_2),
+    //ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_PSU2_1),
+    //ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_PSU2_2),
+    ONLP_FAN_ID_CREATE(ONLP_FAN_1),
+    ONLP_FAN_ID_CREATE(ONLP_FAN_2),
+    ONLP_FAN_ID_CREATE(ONLP_FAN_3),
+    ONLP_FAN_ID_CREATE(ONLP_FAN_4),
+    ONLP_FAN_ID_CREATE(ONLP_FAN_5),
+    ONLP_FAN_ID_CREATE(ONLP_FAN_6),
+    ONLP_FAN_ID_CREATE(ONLP_FAN_7),
+    ONLP_FAN_ID_CREATE(ONLP_FAN_8),
+    //ONLP_FAN_ID_CREATE(ONLP_PSU1_FAN_1),
+    //ONLP_FAN_ID_CREATE(ONLP_PSU2_FAN_1),
+    ONLP_PSU_ID_CREATE(ONLP_PSU_1),
+    ONLP_PSU_ID_CREATE(ONLP_PSU_2),
+    ONLP_LED_ID_CREATE(ONLP_LED_SYSTEM),
+    ONLP_LED_ID_CREATE(ONLP_LED_PSU1),
+    ONLP_LED_ID_CREATE(ONLP_LED_PSU2),
+    ONLP_LED_ID_CREATE(ONLP_LED_FAN),
+    //ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY1), //connect behind ONLP_FAN_1,2
+    //ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY2), //connect behind ONLP_FAN_3,4
+    //ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY3), //connect behind ONLP_FAN_5,6
+    //ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY4), //connect behind ONLP_FAN_7,8
+};
+
+/* update sysi platform info */
+static int update_sysi_platform_info(onlp_platform_info_t* info)
+{
+    int ret = ONLP_STATUS_OK;
+    int cpld_version = 0; 
+    char bios_out[32] = "";
+    int cpld_board_type = 0; 
+    int board_build_rev = 0; 
+    int board_hw_rev = 0; 
+    int board_id = 0; 
+
+    //Get CPLD Version
+    ret = file_read_hex(&cpld_version, "/sys/bus/i2c/devices/0-0033/cpld_version");
+    if (ret != ONLP_STATUS_OK) {
+        return ONLP_STATUS_E_INTERNAL;
+    }    
+
+    if (cpld_version < 0) { 
+        AIM_LOG_ERROR("unable to read CPLD version\n");
+        return ONLP_STATUS_E_INTERNAL;
+    }    
+
+    info->cpld_versions = aim_fstrdup("0x%02x\n", cpld_version);
+
+    //Get BIOS version 
+    if (exec_cmd(CMD_BIOS_VER, bios_out, sizeof(bios_out)) < 0) { 
+        AIM_LOG_ERROR("unable to read BIOS version\n");
+        return ONLP_STATUS_E_INTERNAL;
+    }    
+
+    //Get Board Type (Board Buld Rev, Board HW Rev, Boadr ID)
+    ret = file_read_hex(&cpld_board_type, "/sys/bus/i2c/devices/0-0033/cpld_board_type");
+    if (ret != ONLP_STATUS_OK) {
+        return ONLP_STATUS_E_INTERNAL;
+    }    
+
+    if (cpld_board_type < 0) { 
+        AIM_LOG_ERROR("unable to read CPLD board type\n");
+        return ONLP_STATUS_E_INTERNAL;
+    }    
+
+    board_build_rev = ((cpld_board_type) & 0x03);
+    board_hw_rev = ((cpld_board_type) >> 2 & 0x03);
+    board_id = ((cpld_board_type) >> 4);
+
+
+    info->other_versions = aim_fstrdup(
+            "\n" 
+            "    [Board Type] 0x%x\n"
+            "    [Build Rev ] %d\n"
+            "    [HW Rev    ] %d\n"
+            "    [Board ID  ] %d\n"
+            "    [BIOS      ] %s\n",
+            cpld_board_type,
+            board_build_rev,
+            board_hw_rev,
+            board_id,
+            bios_out);
+
     return ONLP_STATUS_OK;
 }
 
-int
-onlp_sysi_onie_data_get(uint8_t** data, int* size)
+/**
+ * @brief Return the name of the the platform implementation.
+ * @notes This will be called PRIOR to any other calls into the
+ * platform driver, including the sysi_init() function below.
+ *
+ * The platform implementation name should match the current
+ * ONLP platform name.
+ *
+ * IF the platform implementation name equals the current platform name,
+ * initialization will continue.
+ *
+ * If the platform implementation name does not match, the following will be
+ * attempted:
+ *
+ *    onlp_sysi_platform_set(current_platform_name);
+ * If this call is successful, initialization will continue.
+ * If this call fails, platform initialization will abort().
+ *
+ * The onlp_sysi_platform_set() function is optional.
+ * The onlp_sysi_platform_get() is not optional.
+ */
+const char* onlp_sysi_platform_get(void)
 {
-    uint8_t* rdata = aim_zmalloc(SYS_EEPROM_SIZE);
-    if(onlp_file_read(rdata, SYS_EEPROM_SIZE, size, SYS_EEPROM_PATH) == ONLP_STATUS_OK) {
-        if(*size == SYS_EEPROM_SIZE) {
-            AIM_LOG_INFO("read success\n");    
+    return "x86-64-ufispace-s9100-32x-r0";
+}
+
+/**
+ * @brief Attempt to set the platform personality
+ * in the event that the current platform does not match the
+ * reported platform.
+ * @note Optional
+ */
+int onlp_sysi_platform_set(const char* platform)
+{
+    return ONLP_STATUS_OK;
+}
+
+
+/**
+ * @brief Initialize the system platform subsystem.
+ */
+int onlp_sysi_init(void)
+{
+    return ONLP_STATUS_OK;
+}
+
+
+/**
+ * @brief Provide the physical base address for the ONIE eeprom.
+ * @param param [out] physaddr Receives the physical address.
+ * @notes If your platform provides a memory-mappable base
+ * address for the ONIE eeprom data you can return it here.
+ * The ONLP common code will then use this address and decode
+ * the ONIE TLV specification data. If you cannot return a mappable
+ * address due to the platform organization see onlp_sysi_onie_data_get()
+ * instead.
+ */
+int onlp_sysi_onie_data_phys_addr_get(void** physaddr) 
+{
+     return ONLP_STATUS_E_UNSUPPORTED;
+}
+
+
+/**
+ * @brief Return the raw contents of the ONIE system eeprom.
+ * @param data [out] Receives the data pointer to the ONIE data.
+ * @param size [out] Receives the size of the data (if available).
+ * @notes This function is only necessary if you cannot provide
+ * the physical base address as per onlp_sysi_onie_data_phys_addr_get().
+ */
+int onlp_sysi_onie_data_get(uint8_t** data, int* size)
+{
+    uint8_t* rdata = aim_zmalloc(512);
+
+    if(onlp_file_read(rdata, 512, size, "/sys/bus/i2c/devices/9-0054/eeprom") == ONLP_STATUS_OK) {
+        if(*size == 512) {
             *data = rdata;
             return ONLP_STATUS_OK;
         }
     }
-    
+
     AIM_LOG_INFO("Unable to data get eeprom \n");    
     aim_free(rdata);
     *size = 0;
     return ONLP_STATUS_E_INTERNAL;
 }
 
-int
-onlp_sysi_oids_get(onlp_oid_t* table, int max)
+
+/**
+ * @brief Free the data returned by onlp_sys_onie_data_get()
+ * @param data The data pointer.
+ * @notes If onlp_sysi_onie_data_get() is called to retreive the
+ * contents of the ONIE system eeprom then this function
+ * will be called to perform any cleanup that may be necessary
+ * after the data has been used.
+ */
+void onlp_sysi_onie_data_free(uint8_t* data)
 {
-    onlp_oid_t* e = table;
-    memset(table, 0, max*sizeof(onlp_oid_t));
-    int i;
+    /* If onlp_sysi_onie_data_get() allocated, it has be freed here. */
+    if (data) {
+        aim_free(data);
+    } 
+}
 
-     /* 2 PSUs */
-    *e++ = ONLP_PSU_ID_CREATE(1);
-    *e++ = ONLP_PSU_ID_CREATE(2);
 
-    /* LEDs Item */
-    for (i=1; i<=LED_NUM; i++) {
-        *e++ = ONLP_LED_ID_CREATE(i);
+/**
+ * @brief Return the ONIE system information for this platform.
+ * @param onie The onie information structure.
+ * @notes If all previous attempts to get the eeprom data fail
+ * then this routine will be called. Used as a translation option
+ * for platforms without access to an ONIE-formatted eeprom.
+ */
+int onlp_sysi_onie_info_get(onlp_onie_info_t* onie)
+{
+     return ONLP_STATUS_E_UNSUPPORTED;
+}
+
+
+/**
+ * @brief This function returns the root oid list for the platform.
+ * @param table [out] Receives the table.
+ * @param max The maximum number of entries you can fill.
+ */
+int onlp_sysi_oids_get(onlp_oid_t* table, int max)
+{
+
+    memcpy(table, __onlp_oid_info, sizeof(__onlp_oid_info));
+
+#if 0
+    /** Add 32 QSFP OIDs after the static table */
+    onlp_oid_t* e = table + AIM_ARRAYSIZE(__onlp_oid_info);
+
+    /* 32 QSFP */
+    for(i = 1; i <= 32; i++) {
+        *e++ = ONLP_SFP_ID_CREATE(i);
     }
-
-     /* THERMALs Item */
-    for (i=1; i<=THERMAL_NUM; i++) {
-        *e++ = ONLP_THERMAL_ID_CREATE(i);
-    }
-
-    /* Fans Item */
-    for (i=1; i<=FAN_NUM; i++) {
-        *e++ = ONLP_FAN_ID_CREATE(i);
-    }
+#endif
 
     return ONLP_STATUS_OK;
 }
 
-int
-decide_fan_percentage(int is_up, int new_temp)
-{
-    int new_perc;
-    if (is_up) {
-        if (new_temp >= THERMAL_ERROR_DEFAULT) {
-            new_perc = THERMAL_ERROR_FAN_PERC;
-        } else if (new_temp >= THERMAL_WARNING_DEFAULT) {
-            new_perc = THERMAL_WARNING_FAN_PERC;
-        } else {
-            new_perc = THERMAL_NORMAL_FAN_PERC;
-        }
-    } else {
-        if (new_temp <= THERMAL_NORMAL_DEFAULT) {
-            new_perc = THERMAL_NORMAL_FAN_PERC;
-        } else if (new_temp <= THERMAL_WARNING_DEFAULT) {
-            new_perc = THERMAL_WARNING_FAN_PERC;
-        } else {
-            new_perc = THERMAL_ERROR_FAN_PERC;
-        }
-    }
 
-    return new_perc;
+/**
+ * @brief This function provides a generic ioctl interface.
+ * @param code context dependent.
+ * @param vargs The variable argument list for the ioctl call.
+ * @notes This is provided as a generic expansion and
+ * and custom programming mechanism for future and non-standard
+ * functionality.
+ * @notes Optional
+ */
+int onlp_sysi_ioctl(int code, va_list vargs)
+{
+    return ONLP_STATUS_E_UNSUPPORTED;
 }
 
-int 
-platform_thermal_temp_get(int *thermal_temp)
-{
-    int i, temp, max_temp, rc;
-    onlp_thermal_info_t thermal_info;
-    memset(&thermal_info, 0, sizeof(thermal_info));
-    uint32_t thermal_arr[] = { THERMAL_OID_FRONT_MAC, 
-                               THERMAL_OID_REAR_MAC, 
-                               THERMAL_OID_CPU1, 
-                               THERMAL_OID_CPU2, 
-                               THERMAL_OID_CPU3, 
-                               THERMAL_OID_CPU4 };
-    max_temp = 0;
 
-    for (i=0; i<BOARD_THERMAL_NUM; i++) {   
-        
-        if ((rc = onlp_thermali_info_get(thermal_arr[i], &thermal_info)) != ONLP_STATUS_OK) {
-            return rc;
-        }
-        
-        temp = thermal_info.mcelsius;
-        if (temp > max_temp) {
-            max_temp = temp;
-        }
-    }
-    *thermal_temp = max_temp;
+/**
+ * @brief Platform management initialization.
+ */
+int onlp_sysi_platform_manage_init(void)
+{
+    return ONLP_STATUS_OK;
+}
+
+
+/**
+ * @brief Perform necessary platform fan management.
+ * @note This function should automatically adjust the FAN speeds
+ * according to the platform conditions.
+ */
+int onlp_sysi_platform_manage_fans(void)
+{
+    return ONLP_STATUS_E_UNSUPPORTED;
+}
+
+
+/**
+ * @brief Perform necessary platform LED management.
+ * @note This function should automatically adjust the LED indicators
+ * according to the platform conditions.
+ */
+int onlp_sysi_platform_manage_leds(void)
+{
+    onlp_led_info_t info;
+
+    ONLP_TRY(onlp_ledi_info_get(ONLP_LED_ID_CREATE(ONLP_LED_SYSTEM), &info));
+    ONLP_TRY(onlp_ledi_info_get(ONLP_LED_ID_CREATE(ONLP_LED_PSU1), &info));
+    ONLP_TRY(onlp_ledi_info_get(ONLP_LED_ID_CREATE(ONLP_LED_PSU2), &info));
+    ONLP_TRY(onlp_ledi_info_get(ONLP_LED_ID_CREATE(ONLP_LED_FAN), &info));
+    ONLP_TRY(onlp_ledi_info_get(ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY1), &info));
+    ONLP_TRY(onlp_ledi_info_get(ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY2), &info));
+    ONLP_TRY(onlp_ledi_info_get(ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY3), &info));
+    ONLP_TRY(onlp_ledi_info_get(ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY4), &info));
 
     return ONLP_STATUS_OK;
 }
 
-int
-onlp_sysi_platform_manage_fans(void)
+
+/**
+ * @brief Return custom platform information.
+ */
+int onlp_sysi_platform_info_get(onlp_platform_info_t* info)
 {
-    int rc, is_up ,new_temp, thermal_temp, diff;
-    static int new_perc = 0, ori_perc = 0;
-    static int ori_temp = 0;
-    onlp_thermal_info_t thermal_info;
-    memset(&thermal_info, 0, sizeof(thermal_info));
-    
-    /* get new temperature */
-    if ((rc = platform_thermal_temp_get(&thermal_temp)) != ONLP_STATUS_OK) {
-        goto _EXIT;
-    }
 
-    new_temp = thermal_temp;
-    diff = new_temp - ori_temp;
+    ONLP_TRY(update_sysi_platform_info(info));
 
-    if (diff == 0) {
-        goto _EXIT;
-    } else {
-        is_up = (diff > 0 ? 1 : 0);    
-    }
-    
-    new_perc = decide_fan_percentage(is_up, new_temp);
-    
-    if (ori_perc == new_perc) {
-        goto _EXIT;
-    }
-
-
-    AIM_LOG_INFO("Front Fan Speeds Percent are now at %d%%", new_perc);
-
-    if ((rc = onlp_fani_percentage_set(THERMAL_OID_FRONT_MAC, new_perc)) != ONLP_STATUS_OK) {
-        goto _EXIT;
-    }
-            
-    /* update */
-    ori_perc = new_perc;
-    ori_temp = new_temp;
-       
-_EXIT :
-    return rc;
-}
-
-int
-onlp_sysi_platform_manage_leds(void)
-{
-    int psu1_status, psu2_status, rc, i;
-    int fan_tray_id, sum, total = 0;
-    static int pre_psu1_status = 0, pre_psu2_status = 0, pre_fan_status = 0;
-    static int pre_fan_tray_status[4] = {0};
-
-    onlp_psu_info_t psu_info;
-    onlp_fan_info_t fan_info;
-    onlp_led_status_t fan_tray_status[SYS_FAN_NUM];
-
-    memset(&psu_info, 0, sizeof(onlp_psu_info_t));
-    memset(&fan_info, 0, sizeof(onlp_fan_info_t));
-    memset(&fan_tray_status, 0, sizeof(fan_tray_status));
-    uint32_t fan_arr[] = { FAN_OID_FAN1, 
-                           FAN_OID_FAN2, 
-                           FAN_OID_FAN3, 
-                           FAN_OID_FAN4, 
-                           FAN_OID_FAN5, 
-                           FAN_OID_FAN6, 
-                           FAN_OID_FAN7, 
-                           FAN_OID_FAN8, };
-    
-
-    /* PSU LED CTRL */
-    if ((rc = onlp_psui_info_get(PSU_OID_PSU1, &psu_info)) != ONLP_STATUS_OK) {
-        goto _EXIT;
-    }
-    
-    psu1_status = psu_info.status;
-    if (psu1_status != pre_psu1_status) {
-        if((psu1_status & ONLP_PSU_STATUS_PRESENT) == 0) {
-            rc = onlp_ledi_mode_set(LED_OID_PSU1, ONLP_LED_MODE_OFF);
-        }
-        else if(psu1_status != ONLP_PSU_STATUS_PRESENT) {
-            rc = onlp_ledi_mode_set(LED_OID_PSU1, ONLP_LED_MODE_ORANGE);
-        } else {        
-            rc = onlp_ledi_mode_set(LED_OID_PSU1, ONLP_LED_MODE_GREEN);
-        }
-        
-        if (rc != ONLP_STATUS_OK) {
-            goto _EXIT;
-        }        
-        pre_psu1_status = psu1_status;
-    }
-    
-    if ((rc = onlp_psui_info_get(PSU_OID_PSU2, &psu_info)) != ONLP_STATUS_OK) {
-        goto _EXIT;
-    }
-    
-    psu2_status = psu_info.status;
-    if( psu2_status != pre_psu2_status) {
-        if((psu2_status & ONLP_PSU_STATUS_PRESENT) == 0) {
-            rc = onlp_ledi_mode_set(LED_OID_PSU2, ONLP_LED_MODE_OFF);
-        }
-        else if(psu2_status != ONLP_PSU_STATUS_PRESENT) {
-            rc = onlp_ledi_mode_set(LED_OID_PSU2, ONLP_LED_MODE_ORANGE);
-        } else {        
-            rc = onlp_ledi_mode_set(LED_OID_PSU2, ONLP_LED_MODE_GREEN);
-        }
-        
-        if (rc != ONLP_STATUS_OK) {
-            goto _EXIT;
-        }
-        pre_psu2_status = psu2_status;
-    }
-    
-    /* FAN LED CTRL */
-
-    for (i=0; i<SYS_FAN_NUM; i++) {
-        if ((rc = onlp_fani_info_get(fan_arr[i], &fan_info)) != ONLP_STATUS_OK) {
-            goto _EXIT;
-        }
-        /* FAN TRAY LED CTRL */
-        fan_tray_status[i] = fan_info.status;
-        if (i%2 == 1) {
-            sum = fan_tray_status[i-1] + fan_tray_status[i];
-            total = total + sum;
-                        
-            switch (i) {
-                case 1:
-                    fan_tray_id = LED_FAN_TRAY1;
-                    break;
-                case 3:
-                    fan_tray_id = LED_FAN_TRAY2;
-                    break;
-                case 5:
-                    fan_tray_id = LED_FAN_TRAY3;
-                    break;
-                case 7:
-                    fan_tray_id = LED_FAN_TRAY4;
-                    break;
-            }
-            
-            /* the enum of fan_tray id is start from 5 to 8,
-             * the "-5" means mapping to array index 0 to 3
-             */
-            
-            if (sum != pre_fan_tray_status[fan_tray_id - 5]) {
-                if (sum > ONLP_LED_STATUS_FAILED) {            
-                    rc = onlp_ledi_mode_set(fan_tray_id, ONLP_LED_MODE_ORANGE);
-                } else {                    
-                    rc = onlp_ledi_mode_set(fan_tray_id, ONLP_LED_MODE_GREEN);
-                }
-
-                if (rc != ONLP_STATUS_OK) {
-                    goto _EXIT;
-                }
-
-                pre_fan_tray_status[fan_tray_id - 5] = sum;
-            }
-        }
-    }
-    
-    if (total != pre_fan_status) {
-        if (total == (ONLP_LED_STATUS_PRESENT * 8)) {
-            rc = onlp_ledi_mode_set(LED_OID_FAN, ONLP_LED_MODE_GREEN);
-        } else {
-            rc = onlp_ledi_mode_set(LED_OID_FAN, ONLP_LED_MODE_ORANGE);
-        }
-
-        if (rc != ONLP_STATUS_OK) {
-            goto _EXIT;
-        }
-        
-        pre_fan_status = total;
-    }
-    
-_EXIT :
-    return rc;
-}
-
-int
-onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
-{
-    int rc;
-    if ((rc = sysi_platform_info_get(pi)) != ONLP_STATUS_OK) {
-        return ONLP_STATUS_E_INTERNAL;
-    }
-    
     return ONLP_STATUS_OK;
+}
+
+/**
+ * @brief Friee a custom platform information structure.
+ */
+void onlp_sysi_platform_info_free(onlp_platform_info_t* info)
+{
+    if (info->cpld_versions) {
+        aim_free(info->cpld_versions);
+    }   
+
+    if (info->other_versions) {
+        aim_free(info->other_versions);
+    } 
+}
+
+/**
+ * @brief Builtin platform debug tool.
+ */
+int onlp_sysi_debug(aim_pvs_t* pvs, int argc, char** argv)
+{
+     return ONLP_STATUS_E_UNSUPPORTED;
 }
 

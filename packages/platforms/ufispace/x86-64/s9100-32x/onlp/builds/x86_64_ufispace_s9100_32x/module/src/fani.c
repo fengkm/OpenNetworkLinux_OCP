@@ -23,304 +23,382 @@
  *
  ***********************************************************/
 #include <onlp/platformi/fani.h>
-#include "x86_64_ufispace_s9100_32x_int.h"
 #include <onlplib/file.h>
-#include <onlplib/i2c.h>
 #include "platform_lib.h"
 
-onlp_fan_info_t fan_info[] = {
-    { }, /* Not used */
-    {
-        { FAN_OID_FAN1, "FANTRAY 1-A", 0 },
-        ONLP_FAN_STATUS_PRESENT,
-        ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE,
-        0,
-        0,
-        ONLP_FAN_MODE_INVALID,
-    },
-    {
-        { FAN_OID_FAN2, "FANTRAY 1-B", 0 },
-        ONLP_FAN_STATUS_PRESENT,
-        ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE,
-        0,
-        0,
-        ONLP_FAN_MODE_INVALID,
-    },
-    {
-        { FAN_OID_FAN3, "FANTRAY 2-A", 0 },
-        ONLP_FAN_STATUS_PRESENT,
-        ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE,
-        0,
-        0,
-        ONLP_FAN_MODE_INVALID,
-    },
-    {
-        { FAN_OID_FAN4, "FANTRAY 2-B", 0 },
-        ONLP_FAN_STATUS_PRESENT,
-        ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE,
-        0,
-        0,
-        ONLP_FAN_MODE_INVALID,
-    },
-    {
-        { FAN_OID_FAN5, "FANTRAY 3-A", 0 },
-        ONLP_FAN_STATUS_PRESENT,
-        ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE,
-        0,
-        0,
-        ONLP_FAN_MODE_INVALID,
-    },
-    {
-        { FAN_OID_FAN6, "FANTRAY 3-B", 0 },
-        ONLP_FAN_STATUS_PRESENT,
-        ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE,
-        0,
-        0,
-        ONLP_FAN_MODE_INVALID,
-    },
-    {
-        { FAN_OID_FAN7, "FANTRAY 4-A", 0 },
-        ONLP_FAN_STATUS_PRESENT,
-        ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE,
-        0,
-        0,
-        ONLP_FAN_MODE_INVALID,
-    },
-    {
-        { FAN_OID_FAN8, "FANTRAY 4-B", 0 },
-        ONLP_FAN_STATUS_PRESENT,
-        ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE,
-        0,
-        0,
-        ONLP_FAN_MODE_INVALID,
-    },
-    {
-        { FAN_OID_PSU_FAN1, "PSU-1 FAN", 0 },
-        ONLP_FAN_STATUS_PRESENT,
-    },
-    {
-        { FAN_OID_PSU_FAN2, "PSU-2 FAN", 0 },
-        ONLP_FAN_STATUS_PRESENT,
-    }    
-};
-/*
- * This function will be called prior to all of onlp_fani_* functions.
+
+/**
+ * Get all information about the given FAN oid.
+ *
+ * [01] CHASSIS----[01] ONLP_FAN_1----[05] ONLP_LED_FAN_TRAY1
+ *            |----[02] ONLP_FAN_2----[05] ONLP_LED_FAN_TRAY1
+ *            |----[03] ONLP_FAN_3----[06] ONLP_LED_FAN_TRAY2
+ *            |----[04] ONLP_FAN_4----[06] ONLP_LED_FAN_TRAY2
+ *            |----[05] ONLP_FAN_5----[07] ONLP_LED_FAN_TRAY3
+ *            |----[06] ONLP_FAN_6----[07] ONLP_LED_FAN_TRAY3
+ *            |----[07] ONLP_FAN_7----[08] ONLP_LED_FAN_TRAY4
+ *            |----[08] ONLP_FAN_8----[08] ONLP_LED_FAN_TRAY4
+ *            |
+ *            |----[01] ONLP_PSU_1----[09] ONLP_PSU1_FAN_1
+ *            |----[02] ONLP_PSU_2----[10] ONLP_PSU2_FAN_1
  */
-int
-onlp_fani_init(void)
-{
-    return ONLP_STATUS_OK;
-}
+static onlp_fan_info_t __onlp_fan_info[ONLP_FAN_COUNT] = { 
+    { }, /* Not used */
+    {   
+        .hdr = { 
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_1),
+            .description = "Chassis FANTRAY 1-A",
+            .poid = 0,
+            .coids = { ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY1) },
+        },
+        .status = ONLP_FAN_STATUS_PRESENT,
+        .caps = (ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_SET_PERCENTAGE),
+        .rpm = 0,
+        .percentage = 0,
+        .model = "", 
+        .serial = "", 
+    },  
+    {   
+        .hdr = { 
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_2),
+            .description = "Chassis FANTRAY 1-B",
+            .poid = 0,
+            .coids = { ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY1) },
+        },
+        .status = ONLP_FAN_STATUS_PRESENT,
+        .caps = (ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_SET_PERCENTAGE),
+        .rpm = 0,
+        .percentage = 0,
+        .model = "",
+        .serial = "",
+    },
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_3),
+            .description = "Chassis FANTRAY 2-A",
+            .poid = 0,
+            .coids = { ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY2) },
+        },
+        .status = ONLP_FAN_STATUS_PRESENT,
+        .caps = (ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_SET_PERCENTAGE),
+        .rpm = 0,
+        .percentage = 0,
+        .model = "",
+        .serial = "",
+    },
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_4),
+            .description = "Chassis FANTRAY 2-B",
+            .poid = 0,
+            .coids = { ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY2) },
+        },
+        .status = ONLP_FAN_STATUS_PRESENT,
+        .caps = (ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_SET_PERCENTAGE),
+        .rpm = 0,
+        .percentage = 0,
+        .model = "",
+        .serial = "",
+    },
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_5),
+            .description = "Chassis FANTRAY 3-A",
+            .poid = 0,
+            .coids = { ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY3) },
+        },
+        .status = ONLP_FAN_STATUS_PRESENT,
+        .caps = (ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_SET_PERCENTAGE),
+        .rpm = 0,
+        .percentage = 0,
+        .model = "",
+        .serial = "",
+    },
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_6),
+            .description = "Chassis FANTRAY 3-B",
+            .poid = 0,
+            .coids = { ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY3) },
+        },
+        .status = ONLP_FAN_STATUS_PRESENT,
+        .caps = (ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_SET_PERCENTAGE),
+        .rpm = 0,
+        .percentage = 0,
+        .model = "",
+        .serial = "",
+    },
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_7),
+            .description = "Chassis FANTRAY 4-A",
+            .poid = 0,
+            .coids = { ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY4) },
+        },
+        .status = ONLP_FAN_STATUS_PRESENT,
+        .caps = (ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_SET_PERCENTAGE),
+        .rpm = 0,
+        .percentage = 0,
+        .model = "",
+        .serial = "",
+    },
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_8),
+            .description = "Chassis FANTRAY 4-B",
+            .poid = 0,
+            .coids = { ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY4) },
+        },
+        .status = ONLP_FAN_STATUS_PRESENT,
+        .caps = (ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_SET_PERCENTAGE),
+        .rpm = 0,
+        .percentage = 0,
+        .model = "",
+        .serial = "",
+    },
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_PSU1_FAN_1),
+            .description = "PSU-1 FAN",
+            .poid = ONLP_PSU_ID_CREATE(ONLP_PSU_1),
+        },
+        .status = ONLP_FAN_STATUS_PRESENT,
+        .caps = 0,
+        .model = "",
+        .serial = "",
+    },
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_PSU2_FAN_1),
+            .description = "PSU-2 FAN",
+            .poid = ONLP_PSU_ID_CREATE(ONLP_PSU_2),
+        },
+        .status = ONLP_FAN_STATUS_PRESENT,
+        .caps = 0,
+        .model = "",
+        .serial = "",
+    },
+};
 
-/* get fan present status*/
-int sys_fan_present_get(onlp_fan_info_t* info, int id)
-{
-    int rv, fan_presence, i2c_bus, offset, fan_reg_mask;
+/**
+ * @brief Update the status of FAN's oid header.
+ * @param id The FAN ID.
+ * @param[out] info Receives the header.
+ */
+static int update_fani_status(int local_id, onlp_fan_info_t* info)
+{   
+    int ret = ONLP_STATUS_OK;
+    int fan_presence = 0;
     
-    /* get fan presence*/
-    i2c_bus = I2C_BUS_9;
-    switch (id)
-	{
-        case FAN_ID_FAN1:    
-        case FAN_ID_FAN2:
-            offset = 0;
-            fan_reg_mask = FAN_1_2_PRESENT_MASK;
-            break;
-        case FAN_ID_FAN3:
-        case FAN_ID_FAN4:
-            offset = 0;
-            fan_reg_mask = FAN_3_4_PRESENT_MASK;
-            break;
-        case FAN_ID_FAN5:
-        case FAN_ID_FAN6:
-            offset = 1;
-            fan_reg_mask = FAN_5_6_PRESENT_MASK;
-            break;
-        case FAN_ID_FAN7:
-        case FAN_ID_FAN8:
-            offset = 1;
-            fan_reg_mask = FAN_7_8_PRESENT_MASK;
-            break;
-        default:
-            return ONLP_STATUS_E_INVALID;
-    }   
-
-    rv = onlp_i2c_readb(i2c_bus, FAN_REG, offset, ONLP_I2C_F_FORCE);
-    if (rv < 0) {
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    fan_presence = (rv & fan_reg_mask) ? 0 : 1;
-
-    if (!fan_presence) {
+    /* clear fani status */
+    info->status = 0;
+    
+    /* get fan present status */
+    fan_presence = get_fan_present_status(local_id);
+    
+    if (fan_presence == 0) {
         info->status &= ~ONLP_FAN_STATUS_PRESENT;
+    } else if (fan_presence == 1) {
+        info->status = ONLP_FAN_STATUS_PRESENT;
     } else {
-        info->status |= ONLP_FAN_STATUS_PRESENT;
+        return ONLP_STATUS_E_INTERNAL;
     }
-
-    return ONLP_STATUS_OK;
+    
+    return ret;
 }
 
-int 
-sys_fan_info_get(onlp_fan_info_t* info, int id)
+/**
+ * @brief Update the information structure for the given FAN
+ * @param id The FAN Local ID
+ * @param[out] info Receives the FAN information.
+ */
+static int update_fani_info(int local_id, onlp_fan_info_t* info)
 {
-    int rv, fan_status, fan_rpm, perc_val, percentage;
-    int max_fan_speed = 16000;
-    fan_status = 0;
-    fan_rpm = 0;       
+    int fan_alarm = 0;
+    int fan_rpm = 0;
+    int sys_max_fan_speed = 16000;
 
-    rv = sys_fan_present_get(info, id);
-    if (rv < 0) {
-        return ONLP_STATUS_E_INTERNAL;
-    }
- 
-    rv = onlp_file_read_int(&fan_status, SYS_FAN_PREFIX "fan%d_alarm", id);
-    if (rv < 0) {
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    /* fan status > 1, means failure */
-    if (fan_status > 0) {
-        info->status |= ONLP_FAN_STATUS_FAILED;
+    if ((info->status & ONLP_FAN_STATUS_PRESENT) == 0) {
+        //not present, do nothing
         return ONLP_STATUS_OK;
-    }
-        
-    rv = onlp_file_read_int(&fan_rpm, SYS_FAN_PREFIX "fan%d_input", id);
-    if (rv < 0) {
-        return ONLP_STATUS_E_INTERNAL;
-    }    
-    info->rpm = fan_rpm;
-    
-    /* get speed percentage*/
-    switch (id)
-	{
-        case FAN_ID_FAN1:    
-        case FAN_ID_FAN2:
-        case FAN_ID_FAN3:
-        case FAN_ID_FAN4:
-            rv = onlp_file_read_int(&perc_val, SYS_FAN_PREFIX "pwm%d", FAN_CTRL_SET1);
-            break;
-        case FAN_ID_FAN5:
-        case FAN_ID_FAN6:
-        case FAN_ID_FAN7:
-        case FAN_ID_FAN8:
-			rv = onlp_file_read_int(&perc_val, SYS_FAN_PREFIX "pwm%d", FAN_CTRL_SET2);
-            break;
-        default:
-            return ONLP_STATUS_E_INVALID;
     }   
-    if (rv < 0) {
-        return ONLP_STATUS_E_INTERNAL;
-    }
-    
-    percentage = (info->rpm*100)/max_fan_speed;
 
-    info->percentage = percentage;
-    
+    //only support for ONLP_FAN_1 to ONLP_FAN_8
+    if (local_id == ONLP_PSU1_FAN_1 || local_id == ONLP_PSU2_FAN_1) {
+        return ONLP_STATUS_OK;
+    }   
+
+    //get fan alarm
+    ONLP_TRY(onlp_file_read_int(&fan_alarm, "/sys/class/hwmon/hwmon1/device/fan%d_alarm", local_id));
+
+    //get and update fan rpm and percentage
+    ONLP_TRY(onlp_file_read_int(&fan_rpm, "/sys/class/hwmon/hwmon1/device/fan%d_input", local_id));
+    info->rpm = fan_rpm;
+    info->percentage = (info->rpm * 100) / sys_max_fan_speed;
+
+    //update fan_status
+    info->status |= (fan_alarm > 0 || fan_rpm == 0) ? ONLP_FAN_STATUS_FAILED : ONLP_FAN_STATUS_F2B;
+
     return ONLP_STATUS_OK;
 }
 
-int
-sys_fan_rpm_percent_set(int perc)
-{  
-    int rc;
-    rc = onlp_file_write_int(perc, SYS_FAN_PREFIX "pwm%d", FAN_CTRL_SET1);
-    
-    if (rc < 0) {
-        return ONLP_STATUS_E_INTERNAL;
-    }
-    
-    rc = onlp_file_write_int(perc, SYS_FAN_PREFIX "pwm%d", FAN_CTRL_SET2);
-    if (rc < 0) {
-        return ONLP_STATUS_E_INTERNAL;
-    }
-       
+/**
+ * @brief Initialize the fan platform subsystem.
+ */
+int onlp_fani_init(void)
+{
     return ONLP_STATUS_OK;
 }
 
-int
-onlp_fani_rpm_set(onlp_oid_t id, int rpm)
+/**
+ * @brief Get the information structure for the given fan OID.
+ * @param id The fan OID
+ * @param info [out] Receives the fan information.
+ */
+int onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
+{
+    int ret = ONLP_STATUS_OK;
+    int local_id = ONLP_OID_ID_GET(id);
+
+    /* Set the onlp_fan_info_t */
+    memset(info, 0, sizeof(onlp_fan_info_t));
+    *info = __onlp_fan_info[local_id];
+    ONLP_TRY(onlp_fani_hdr_get(id, &info->hdr));
+
+    /* Update onlp_fan_info_t */
+    ONLP_TRY(update_fani_status(local_id, info));
+
+    if (local_id >= ONLP_FAN_1 && local_id <= ONLP_FAN_8) {
+        ret = update_fani_info(local_id, info);
+    } else if (local_id == ONLP_PSU1_FAN_1 || ONLP_PSU2_FAN_1) {
+        ret = ONLP_STATUS_OK;
+    } else {
+        AIM_LOG_ERROR("unknown FAN id (%d), func=%s\n", local_id, __FUNCTION__);
+        ret = ONLP_STATUS_E_PARAM;
+    }
+
+    return ret;
+}
+
+/**
+ * @brief Retrieve the fan's operational status.
+ * @param id The fan OID.
+ * @param status [out] Receives the fan's operations status flags.
+ * @notes Only operational state needs to be returned -
+ *        PRESENT/FAILED
+ */
+int onlp_fani_status_get(onlp_oid_t id, uint32_t* status)
+{
+    int local_id = ONLP_OID_ID_GET(id);
+    int fan_presence = 0;
+
+    fan_presence = get_fan_present_status(local_id);
+
+    if (fan_presence == 0) {
+        *status &= ~ONLP_FAN_STATUS_PRESENT;
+    } else if (fan_presence == 1) {
+        *status |= ONLP_FAN_STATUS_PRESENT;
+    } else {
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    return ONLP_STATUS_OK;
+}
+
+/**
+ * @brief Retrieve the fan's OID hdr.
+ * @param id The fan OID.
+ * @param rv [out] Receives the OID header.
+ */
+int onlp_fani_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr)
+{
+    int ret = ONLP_STATUS_OK;
+    int local_id = ONLP_OID_ID_GET(id);
+
+    /* Set the onlp_fan_info_t */
+    *hdr = __onlp_fan_info[local_id].hdr;
+
+    return ret;
+}
+
+/**
+ * @brief Set the fan speed in RPM.
+ * @param id The fan OID
+ * @param rpm The new RPM
+ * @note This is only relevant if the RPM capability is set.
+ */
+int onlp_fani_rpm_set(onlp_oid_t id, int rpm)
 {
     return ONLP_STATUS_E_UNSUPPORTED;
 }
 
-/*
- * This function sets the fan speed of the given OID as a percentage.
- *
- * This will only be called if the OID has the PERCENTAGE_SET
- * capability.
- *
- * It is optional if you have no fans at all with this feature.
+
+/**
+ * @brief Set the fan speed in percentage.
+ * @param id The fan OID.
+ * @param p The new fan speed percentage.
+ * @note This is only relevant if the PERCENTAGE capability is set.
  */
-int
-onlp_fani_percentage_set(onlp_oid_t id, int percentage)
+int onlp_fani_percentage_set(onlp_oid_t id, int p)
 {
-    int  fid, perc_val, rc;
-    fid = ONLP_OID_ID_GET(id);
+    int local_id = ONLP_OID_ID_GET(id);
+    int pwm = 0; //range from 0-255
 
-    /* Set fan speed 
-       Driver accept value in range between 128 and 255.
-       Value 128 is 50%.
-       Value 200 is 80%.
-       Value 255 is 100%.
-    */
-    if (percentage == 100) {
-        perc_val = 255;
-    } else if (percentage == 80) {
-        perc_val = 200;
-    } else if (percentage == 50) {
-        perc_val = 128;
+    /**
+     * Set fan speed 
+     * Driver accept value in range between 128 and 255.
+     * Value 128 is 50%.
+     * Value 200 is 80%.
+     * Value 255 is 100%.
+    **/
+    pwm = (p > 0) ? (p / 100 * 255) : 200;
+
+    /* set the minmux speed */
+    if (pwm < 128) {
+        pwm = 128;
+    }
+
+    if (local_id >= ONLP_FAN_1 && local_id <= ONLP_FAN_4) {
+        ONLP_TRY(onlp_file_write_int(pwm, "/sys/class/hwmon/hwmon1/device/pwm1"));
+    } else if (local_id >= ONLP_FAN_5 && local_id <= ONLP_FAN_8) {
+        ONLP_TRY(onlp_file_write_int(pwm, "/sys/class/hwmon/hwmon1/device/pwm2"));
+    } else if (local_id == ONLP_PSU1_FAN_1 || local_id == ONLP_PSU2_FAN_1) {
+        return ONLP_STATUS_E_UNSUPPORTED;
     } else {
-         return ONLP_STATUS_E_INVALID;
+        return ONLP_STATUS_E_PARAM;
     }
 
-    switch (fid)
-	{
-        case FAN_ID_FAN1:    
-        case FAN_ID_FAN2:
-        case FAN_ID_FAN3:
-        case FAN_ID_FAN4:
-        case FAN_ID_FAN5:
-        case FAN_ID_FAN6:
-        case FAN_ID_FAN7:
-        case FAN_ID_FAN8:
-			rc = sys_fan_rpm_percent_set(perc_val);
-            break;
-        default:
-            return ONLP_STATUS_E_INVALID;
-    }
-	return rc;   
+    return ONLP_STATUS_OK;
 }
 
-int
-onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* rv)
+/**
+ * @brief Set the fan mode.
+ * @param id The fan OID.
+ * @param mode The new fan mode.
+ */
+int onlp_fani_mode_set(onlp_oid_t id, onlp_fan_mode_t mode)
 {
-    int fan_id ,rc;
-    
-    fan_id = ONLP_OID_ID_GET(id);
-    *rv = fan_info[fan_id];
-    rv->caps |= ONLP_FAN_CAPS_GET_RPM;
-       
-    switch (fan_id) {
-        case FAN_ID_FAN1:
-        case FAN_ID_FAN2:
-        case FAN_ID_FAN3:
-        case FAN_ID_FAN4:
-        case FAN_ID_FAN5:
-        case FAN_ID_FAN6:
-        case FAN_ID_FAN7:
-        case FAN_ID_FAN8:
-            rc = sys_fan_info_get(rv, fan_id);
-            break;
-        case FAN_ID_PSU_FAN1:
-        case FAN_ID_PSU_FAN2:
-            rc = psu_fan_info_get(rv, fan_id);
-            break;
-        default:            
-            return ONLP_STATUS_E_INTERNAL;
-            break;
-    }
-
-    return rc;
+    return ONLP_STATUS_E_UNSUPPORTED;
 }
-    
+
+
+/**
+ * @brief Set the fan direction (if supported).
+ * @param id The fan OID
+ * @param dir The direction.
+ */
+int onlp_fani_dir_set(onlp_oid_t id, onlp_fan_dir_t dir)
+{
+    return ONLP_STATUS_E_UNSUPPORTED;
+}
+
+/**
+ * @brief Generic fan ioctl
+ * @param id The fan OID
+ * @param vargs The variable argument list for the ioctl call.
+ * @param Optional
+ */
+int onlp_fani_ioctl(onlp_oid_t fid, va_list vargs) {
+    return ONLP_STATUS_E_UNSUPPORTED;
+}
+
