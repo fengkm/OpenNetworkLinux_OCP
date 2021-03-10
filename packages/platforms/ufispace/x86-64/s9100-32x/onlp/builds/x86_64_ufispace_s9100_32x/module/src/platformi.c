@@ -104,5 +104,16 @@ int onlp_platformi_manage_fans(void)
  */
 int onlp_platformi_manage_leds(void)
 {
-    return ONLP_STATUS_E_UNSUPPORTED;
+    onlp_led_info_t info;
+
+    ONLP_TRY(onlp_ledi_info_get(ONLP_LED_ID_CREATE(ONLP_LED_SYSTEM), &info));
+    ONLP_TRY(onlp_ledi_info_get(ONLP_LED_ID_CREATE(ONLP_LED_PSU1), &info));
+    ONLP_TRY(onlp_ledi_info_get(ONLP_LED_ID_CREATE(ONLP_LED_PSU2), &info));
+    ONLP_TRY(onlp_ledi_info_get(ONLP_LED_ID_CREATE(ONLP_LED_FAN), &info));
+    ONLP_TRY(onlp_ledi_info_get(ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY1), &info));
+    ONLP_TRY(onlp_ledi_info_get(ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY2), &info));
+    ONLP_TRY(onlp_ledi_info_get(ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY3), &info));
+    ONLP_TRY(onlp_ledi_info_get(ONLP_LED_ID_CREATE(ONLP_LED_FAN_TRAY4), &info));
+
+    return ONLP_STATUS_OK;
 }

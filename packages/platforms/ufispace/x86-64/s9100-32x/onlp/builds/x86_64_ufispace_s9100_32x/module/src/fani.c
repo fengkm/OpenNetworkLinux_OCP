@@ -366,7 +366,12 @@ int onlp_fani_percentage_set(onlp_oid_id_t id, int p)
      * Value 200 is 80%.
      * Value 255 is 100%.
     **/
-    pwm = (p > 0) ? (p / 100 * 255) : 0;
+    pwm = (p > 0) ? (p / 100 * 255) : 200;
+
+    /* set the minmux speed */
+    if (pwm < 128) {
+        pwm = 128;
+    }
 
     if (local_id >= ONLP_FAN_1 && local_id <= ONLP_FAN_4) {
         ONLP_TRY(onlp_file_write_int(pwm, "/sys/class/hwmon/hwmon1/device/pwm1"));
