@@ -59,7 +59,7 @@ static onlp_psu_info_t __onlp_psu_info[ONLP_PSU_COUNT] = {
         .status = ONLP_PSU_STATUS_PRESENT,
         .model = "", 
         .serial = "", 
-        .caps = ONLP_PSU_CAPS_VOUT | ONLP_PSU_CAPS_IOUT | ONLP_PSU_CAPS_PIN | ONLP_PSU_CAPS_POUT,
+        .caps = ONLP_PSU_CAPS_VIN | ONLP_PSU_CAPS_VOUT | ONLP_PSU_CAPS_IIN | ONLP_PSU_CAPS_IOUT | ONLP_PSU_CAPS_PIN | ONLP_PSU_CAPS_POUT,
     },  
     {   
         .hdr = { 
@@ -75,7 +75,7 @@ static onlp_psu_info_t __onlp_psu_info[ONLP_PSU_COUNT] = {
         .status = ONLP_PSU_STATUS_PRESENT,
         .model = "",
         .serial = "",
-        .caps = ONLP_PSU_CAPS_VOUT | ONLP_PSU_CAPS_IOUT | ONLP_PSU_CAPS_PIN | ONLP_PSU_CAPS_POUT,
+        .caps = ONLP_PSU_CAPS_VIN | ONLP_PSU_CAPS_VOUT | ONLP_PSU_CAPS_IIN | ONLP_PSU_CAPS_IOUT | ONLP_PSU_CAPS_PIN | ONLP_PSU_CAPS_POUT,
     },
 };
 
