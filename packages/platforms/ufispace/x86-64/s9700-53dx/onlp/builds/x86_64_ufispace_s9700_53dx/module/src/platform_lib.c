@@ -50,8 +50,6 @@
 #define CMD_BMC_SDR_GET             "ipmitool sdr -c get %s"
 #define CMD_BMC_SENSOR_CACHE        "ipmitool sdr -c get TEMP_CPU_PECI TEMP_OP2_ENV TEMP_J2_ENV_1 TEMP_J2_DIE_1 TEMP_J2_ENV_2 TEMP_J2_DIE_2 PSU0_TEMP PSU1_TEMP FAN0_RPM FAN1_RPM FAN2_RPM FAN3_RPM PSU0_FAN1 PSU0_FAN2 PSU1_FAN1 PSU1_FAN2 FAN0_PRSNT_H FAN1_PRSNT_H FAN2_PRSNT_H FAN3_PRSNT_H PSU0_VIN PSU0_VOUT PSU0_IIN PSU0_IOUT PSU0_STBVOUT PSU0_STBIOUT PSU1_VIN PSU1_VOUT PSU1_IIN PSU1_IOUT PSU1_STBVOUT PSU1_STBIOUT > /tmp/bmc_sensor_cache"
 #define CMD_BMC_CACHE_GET           "cat "BMC_SENSOR_CACHE" | grep %s | awk -F',' '{print $%d}'"
- #define MB_CPLD1_ID_PATH            "/sys/bus/i2c/devices/1-0030/cpld_id"
-#define CPU_MUX_RESET_PATH          "/sys/devices/platform/x86_64_ufispace_s9700_53dx_lpc/cpu_cpld/mux_reset"
 
 
 const int CPLD_BASE_ADDR[] = {0x30, 0x39, 0x3a, 0x3b, 0x3c};
@@ -187,13 +185,11 @@ int check_file_exist(char *file_path, long *file_time)
     if(stat(file_path, &file_info) == 0) {
         if(file_info.st_size == 0) {
             return 0;
-        }
-        else {
+        } else {
             *file_time = file_info.st_mtime;
             return 1;
         }
-    }
-    else {
+    } else {
        return 0;
     }
 }
@@ -204,24 +200,21 @@ int bmc_cache_expired_check(long last_time, long new_time, int cache_time)
 
     if(last_time == 0) {
         bmc_cache_expired = 1;
-    }
-    else {
-         if(new_time > last_time) {
-             if((new_time - last_time) > cache_time) {
+    } else {
+        if(new_time > last_time) {
+            if((new_time - last_time) > cache_time) {
                 bmc_cache_expired = 1;
-             }
-             else {
+            }
+            else {
                 bmc_cache_expired = 0;
-             }
-         }
-         else if(new_time == last_time) {
-             bmc_cache_expired = 0;
-         }
-         else {
-             bmc_cache_expired = 1;
-         }
+            }
+        } else if(new_time == last_time) {
+            bmc_cache_expired = 0;
+        } else {
+            bmc_cache_expired = 1;
+        }
     }
-
+    
     return bmc_cache_expired;
 }
 
@@ -229,7 +222,7 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
 {
     struct timeval new_tv;
     FILE *fp = NULL;
-    char ipmi_cmd[500] = {0};
+    char ipmi_cmd[1024] = {0};
     char get_data_cmd[120] = {0};
     char buf[20];
     int rv = ONLP_STATUS_OK;
@@ -259,12 +252,10 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
         gettimeofday(&new_tv, NULL);
         if(bmc_cache_expired_check(file_last_time, new_tv.tv_sec, cache_time)) {
             bmc_cache_expired = 1;
-        }
-        else {
+        } else {
             bmc_cache_expired = 0;
         }
-    }
-    else {
+    } else {
         bmc_cache_expired = 1;
     }
 
@@ -279,7 +270,7 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
     {
         ONLP_LOCK();
         if(bmc_cache_expired_check(file_last_time, bmc_cache_time, cache_time)) {
-            sprintf(ipmi_cmd, CMD_BMC_SENSOR_CACHE);
+            snprintf(ipmi_cmd, sizeof(ipmi_cmd), CMD_BMC_SENSOR_CACHE);
             system(ipmi_cmd);
         }
 
@@ -288,12 +279,10 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
             memset(buf, 0, sizeof(buf));
 
             if( dev_num >= 16 && dev_num <=19 ) {                
-                sprintf(get_data_cmd, CMD_BMC_CACHE_GET, bmc_cache[dev_num].name, 5);
+                snprintf(get_data_cmd, sizeof(get_data_cmd), CMD_BMC_CACHE_GET, bmc_cache[dev_num].name, 5);
                 fp = popen(get_data_cmd, "r");
-                if(fp != NULL)
-                {
-                    if(fgets(buf, sizeof(buf), fp) != NULL)
-                    {
+                if(fp != NULL) {
+                    if(fgets(buf, sizeof(buf), fp) != NULL) {
                         if( strstr(buf, presence_str) != NULL ) {
                             f_rv = 1;
                         } else {
@@ -304,11 +293,10 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
                 }
                 pclose(fp);
             } else {                
-                sprintf(get_data_cmd, CMD_BMC_CACHE_GET, bmc_cache[dev_num].name, 2);
+                snprintf(get_data_cmd, sizeof(get_data_cmd), CMD_BMC_CACHE_GET, bmc_cache[dev_num].name, 2);
                 
                 fp = popen(get_data_cmd, "r");
-                if(fp != NULL)
-                {
+                if(fp != NULL) {
                     if(fgets(buf, sizeof(buf), fp) != NULL) {
                         f_rv = atof(buf);
                         bmc_cache[dev_num].data = f_rv;
@@ -334,7 +322,7 @@ int read_ioport(int addr, int *reg_val) {
 
     /*set r/w permission of all 65536 ports*/
     ret = iopl(3);
-    if(ret < 0){
+    if(ret < 0) {
         AIM_LOG_ERROR("unable to read cpu cpld version, iopl enable error %d\n", ret);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -342,7 +330,7 @@ int read_ioport(int addr, int *reg_val) {
 
     /*set r/w permission of  all 65536 ports*/
     ret = iopl(0);
-    if(ret < 0){
+    if(ret < 0) {
         AIM_LOG_ERROR("unable to read cpu cpld version, iopl disable error %d\n", ret);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -420,7 +408,7 @@ int parse_bmc_sdr_cmd(char *cmd_out, int cmd_out_size,
     //Check output is correct
     if (strnlen(cmd_out, cmd_out_size)==0 ||
         strchr(cmd_out, delimiter_c)==NULL ||
-        strstr(cmd_out, sensor_id_str)==NULL ){
+        strstr(cmd_out, sensor_id_str)==NULL ) {
         AIM_LOG_ERROR("unable to read sensor info from BMC, sensor=%s, out=%s\n", sensor_id_str, cmd_out);
         return ONLP_STATUS_E_INTERNAL; 
     }
@@ -494,15 +482,15 @@ void check_and_do_i2c_mux_reset(int port)
     char cmd_buf[256] = {0};
     int ret = 0;
 
-    if(access(MB_CPLD1_ID_PATH, F_OK) != -1 ) {
+    if(access("/sys/bus/i2c/devices/1-0030/cpld_id", F_OK) != -1 ) {
 
-        snprintf(cmd_buf, sizeof(cmd_buf), "cat %s > /dev/null 2>&1", MB_CPLD1_ID_PATH);
+        snprintf(cmd_buf, sizeof(cmd_buf), "cat /sys/bus/i2c/devices/1-0030/cpld_id > /dev/null 2>&1");
         ret = system(cmd_buf);
 
         if (ret != 0) {
-            if(access(CPU_MUX_RESET_PATH, F_OK) != -1 ) {
+            if(access("/sys/devices/platform/x86_64_ufispace_s9700_53dx_lpc/cpu_cpld/mux_reset", F_OK) != -1 ) {
                 //AIM_LOG_SYSLOG_WARN("I2C bus is stuck!! (port=%d)\r\n", port);
-                snprintf(cmd_buf, sizeof(cmd_buf), "echo 0 > %s 2> /dev/null", CPU_MUX_RESET_PATH);
+                snprintf(cmd_buf, sizeof(cmd_buf), "echo 0 > /sys/devices/platform/x86_64_ufispace_s9700_53dx_lpc/cpu_cpld/mux_reset 2> /dev/null");
                 ret = system(cmd_buf);
                 //AIM_LOG_SYSLOG_WARN("Do I2C mux reset!! (ret=%d)\r\n", ret);
             }
