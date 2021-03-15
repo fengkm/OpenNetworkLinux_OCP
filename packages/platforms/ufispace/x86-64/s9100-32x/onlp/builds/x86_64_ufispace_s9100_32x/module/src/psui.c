@@ -228,6 +228,58 @@ static int update_psui_iout_info(int local_id, onlp_psu_info_t* info)
 
 
 /**
+ * @brief Update the information of PSU IIN
+ * @param id The PSU Local ID
+ * @param[out] info Receives the PSU information (iin).
+ */
+static int update_psui_iin_info(int local_id, onlp_psu_info_t* info)
+{
+    int psu_reg_value = 0;
+    unsigned int y_value = 0;
+    unsigned char n_value = 0;
+    unsigned int temp = 0;
+    char result[32];
+    double dvalue;
+
+    memset(result, 0, sizeof(result));
+
+    if (local_id == ONLP_PSU_1) {
+        psu_reg_value = onlp_i2c_readw(8, 0x58, 0x89, ONLP_I2C_F_FORCE);
+    } else if (local_id == ONLP_PSU_2) {
+        psu_reg_value = onlp_i2c_readw(9, 0x58, 0x89, ONLP_I2C_F_FORCE);
+    } else {
+        AIM_LOG_ERROR("unknown PSU id (%d), func=%s\n", local_id, __FUNCTION__);
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    if (psu_reg_value < 0) {
+        AIM_LOG_ERROR("PSU register value is less than 0 (%d)\n", psu_reg_value);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    y_value = (psu_reg_value & 0x07FF);
+    if ((psu_reg_value & 0x8000) && (y_value)) {
+        n_value = 0xF0 + (((psu_reg_value) >> 11) & 0x0F);
+        n_value = (~n_value) + 1;
+        temp = (unsigned int)(1 << n_value);
+        if (temp) {
+            snprintf(result, sizeof(result), "%d.%04d", y_value/temp, ((y_value%temp)*10000)/temp);
+        }
+    } else {
+        n_value = (((psu_reg_value) >> 11) & 0x0F);
+        snprintf(result, sizeof(result), "%d", (y_value * (1 << n_value)));
+    }
+
+    dvalue = atof((const char *)result);
+    if (dvalue > 0.0) {
+        info->miin = (int)(dvalue * 1000);
+    }
+
+    return ONLP_STATUS_OK;
+}
+
+
+/**
  * @brief Update the information of PSU POUT
  * @param id The PSU Local ID
  * @param[out] info Receives the PSU information (pout).
@@ -258,8 +310,7 @@ static int update_psui_pout_info(int local_id, onlp_psu_info_t* info)
     }
 
     y_value = (psu_reg_value & 0x07FF);
-    if ((psu_reg_value & 0x8000) && (y_value))
-    {
+    if ((psu_reg_value & 0x8000) && (y_value)) {
         n_value = 0xF0 + (((psu_reg_value) >> 11) & 0x0F);
         n_value = (~n_value) + 1;
         temp = (unsigned int)(1 << n_value);
@@ -311,8 +362,7 @@ static int update_psui_pin_info(int local_id, onlp_psu_info_t* info)
     }
 
     y_value = (psu_reg_value & 0x07FF);
-    if ((psu_reg_value & 0x8000) && (y_value))
-    {
+    if ((psu_reg_value & 0x8000) && (y_value)) {
         n_value = 0xF0 + (((psu_reg_value) >> 11) & 0x0F);
         n_value = (~n_value) + 1;
         temp = (unsigned int)(1 << n_value);
@@ -384,6 +434,57 @@ static int update_psui_vout_info(int local_id, onlp_psu_info_t* info)
     return ONLP_STATUS_OK;
 }
 
+/**
+ * @brief Update the information of PSU VIN
+ * @param id The PSU Local ID
+ * @param[out] info Receives the PSU information (vin).
+ */
+static int update_psui_vin_info(int local_id, onlp_psu_info_t* info)
+{
+    int psu_reg_value = 0;
+    unsigned int y_value = 0;
+    unsigned char n_value = 0;
+    unsigned int temp = 0;
+    char result[32];
+    double dvalue;
+
+    memset(result, 0, sizeof(result));
+
+    if (local_id == ONLP_PSU_1) {
+        psu_reg_value = onlp_i2c_readw(8, 0x58, 0x88, ONLP_I2C_F_FORCE);
+    } else if (local_id == ONLP_PSU_2) {
+        psu_reg_value = onlp_i2c_readw(9, 0x58, 0x88, ONLP_I2C_F_FORCE);
+    } else {
+        AIM_LOG_ERROR("unknown PSU id (%d), func=%s\n", local_id, __FUNCTION__);
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    if (psu_reg_value < 0) {
+        AIM_LOG_ERROR("PSU register value is less than 0 (%d)\n", psu_reg_value);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    y_value = (psu_reg_value & 0x07FF);
+    if ((psu_reg_value & 0x8000) && (y_value)) {
+        n_value = 0xF0 + (((psu_reg_value) >> 11) & 0x0F);
+        n_value = (~n_value) + 1;
+        temp = (unsigned int)(1 << n_value);
+        if (temp) {
+            snprintf(result, sizeof(result), "%d.%04d", y_value/temp, ((y_value%temp)*10000)/temp);
+        }
+    } else {
+        n_value = (((psu_reg_value) >> 11) & 0x0F);
+        snprintf(result, sizeof(result), "%d", (y_value * (1 << n_value)));
+    }
+
+    dvalue = atof((const char *)result);
+    if (dvalue > 0.0) {
+        info->mvin = (int)(dvalue * 1000);
+    }
+
+    return ONLP_STATUS_OK;
+}
+
 
 /**
  * @brief Update the information structure for the given PSU
@@ -411,6 +512,12 @@ static int update_psui_info(int local_id, onlp_psu_info_t* info)
         return ONLP_STATUS_E_INTERNAL;
     }
 
+    //update iin value (ONLP_PSU_CAPS_GET_IIN)
+    ret = update_psui_iin_info(local_id, info);
+    if (ret != ONLP_STATUS_OK) {
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
     //update pout value (ONLP_PSU_CAPS_GET_POUT)
     ret = update_psui_pout_info(local_id, info);
     if (ret != ONLP_STATUS_OK) {
@@ -425,6 +532,12 @@ static int update_psui_info(int local_id, onlp_psu_info_t* info)
 
     //update vout value (ONLP_PSU_CAPS_GET_VOUT)
     ret = update_psui_vout_info(local_id, info);
+    if (ret != ONLP_STATUS_OK) {
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    //update vin value (ONLP_PSU_CAPS_GET_VIN)
+    ret = update_psui_vin_info(local_id, info);
     if (ret != ONLP_STATUS_OK) {
         return ONLP_STATUS_E_INTERNAL;
     }

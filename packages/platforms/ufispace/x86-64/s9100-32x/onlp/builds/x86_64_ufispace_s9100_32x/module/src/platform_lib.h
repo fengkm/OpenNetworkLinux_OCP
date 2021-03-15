@@ -155,3 +155,4 @@ int get_psu_pwgood_status(int local_id);
 int get_fan_present_status(int local_id);
 int get_fan_operational_status(int local_id);
 
+#endif  /* __PLATFORM_LIB_H__ */
